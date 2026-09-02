@@ -1,0 +1,8 @@
+# Release archives are uploaded as GitHub Release assets.
+dist/*.zip
+
+# Local editor and OS files.
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
