@@ -69,7 +69,7 @@ if ($cliOutput -notmatch 'split-pane') {
 
 $shimPath = Join-Path $projectRoot 'tb-shim.cmd'
 $shimContents = Get-Content -LiteralPath $shimPath -Raw
-if ($shimContents -notmatch 'Terminal Board shim' -or $shimContents -notmatch 'TerminalBoard\\bin\\tb.cmd') {
+if ($shimContents -notmatch 'Terminal Board shim' -or $shimContents -notmatch '%~dp0TerminalBoard\\tb.cmd') {
     throw 'WindowsApps shim does not point to the installed Terminal Board command.'
 }
 

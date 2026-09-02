@@ -2,19 +2,25 @@
 param()
 
 $ErrorActionPreference = 'Stop'
-$installDirectory = Join-Path $env:LOCALAPPDATA 'TerminalBoard\bin'
-$terminalBoardDirectory = Split-Path -Parent $installDirectory
-$shimPath = Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps\tb.cmd'
+$windowsAppsDirectory = Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps'
+$installDirectory = Join-Path $windowsAppsDirectory 'TerminalBoard'
+$legacyInstallDirectory = Join-Path $env:LOCALAPPDATA 'TerminalBoard\bin'
+$terminalBoardDataDirectory = Join-Path $env:LOCALAPPDATA 'TerminalBoard'
+$shimPath = Join-Path $windowsAppsDirectory 'tb.cmd'
 
 $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
 $updatedParts = @(
     $userPath -split ';' |
-        Where-Object { $_ -and $_.TrimEnd('\') -ine $installDirectory.TrimEnd('\') }
+        Where-Object { $_ -and $_.TrimEnd('\') -ine $legacyInstallDirectory.TrimEnd('\') }
 )
 [Environment]::SetEnvironmentVariable('Path', ($updatedParts -join ';'), 'User')
 
-if (Test-Path -LiteralPath $terminalBoardDirectory) {
-    Remove-Item -LiteralPath $terminalBoardDirectory -Recurse -Force
+if (Test-Path -LiteralPath $installDirectory) {
+    Remove-Item -LiteralPath $installDirectory -Recurse -Force
+}
+
+if (Test-Path -LiteralPath $terminalBoardDataDirectory) {
+    Remove-Item -LiteralPath $terminalBoardDataDirectory -Recurse -Force
 }
 
 if (Test-Path -LiteralPath $shimPath) {

@@ -19,8 +19,9 @@ Hoac tren may Windows khac: giai nen goi phat hanh va nhap dup `setup.cmd`.
 
 Mo mot terminal moi de PATH duoc cap nhat.
 
-Bo cai cung tao shim `tb.cmd` trong thu muc WindowsApps cua nguoi dung, nen
-lenh thuong co the dung ngay ca khi Windows Terminal dang giu PATH cu.
+Bo cai dat chuong trinh va shim `tb.cmd` trong thu muc WindowsApps cua nguoi
+dung. Vi vay lenh co the dung ngay, van hoat dong sau khi khoi dong lai Windows
+va khong can sua PATH thu cong.
 
 ## Su dung
 

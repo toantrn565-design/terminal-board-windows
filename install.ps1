@@ -11,9 +11,9 @@ if (-not (Get-Command wt.exe -ErrorAction SilentlyContinue)) {
     throw 'Khong tim thay Windows Terminal (wt.exe). Hay cai Windows Terminal truoc.'
 }
 
-$installDirectory = Join-Path $env:LOCALAPPDATA 'TerminalBoard\bin'
-$moduleDirectory = Join-Path $installDirectory 'src'
 $windowsAppsDirectory = Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps'
+$installDirectory = Join-Path $windowsAppsDirectory 'TerminalBoard'
+$moduleDirectory = Join-Path $installDirectory 'src'
 $shimPath = Join-Path $windowsAppsDirectory 'tb.cmd'
 
 New-Item -ItemType Directory -Path $moduleDirectory -Force | Out-Null
@@ -34,20 +34,6 @@ if (Test-Path -LiteralPath $windowsAppsDirectory) {
     else {
         Write-Warning "Khong ghi de lenh da ton tai: $shimPath"
     }
-}
-
-$userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-$pathParts = @($userPath -split ';' | Where-Object { $_ })
-$alreadyOnPath = $pathParts | Where-Object { $_.TrimEnd('\') -ieq $installDirectory.TrimEnd('\') }
-
-if (-not $alreadyOnPath) {
-    $updatedPath = if ([string]::IsNullOrWhiteSpace($userPath)) {
-        $installDirectory
-    }
-    else {
-        $userPath.TrimEnd(';') + ';' + $installDirectory
-    }
-    [Environment]::SetEnvironmentVariable('Path', $updatedPath, 'User')
 }
 
 Write-Host "Da cai Terminal Board vao: $installDirectory"
