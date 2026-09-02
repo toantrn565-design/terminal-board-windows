@@ -1,5 +1,7 @@
 # Terminal Board (`tb`)
 
+[Hướng dẫn phím tắt và quản lý pane](SHORTCUTS.md)
+
 `tb` la cong cu danh rieng cho Windows, chia terminal hien tai thanh nhieu
 pane doc lap trong Windows Terminal.
 No chi quan ly bo cuc; moi pane van la terminal binh thuong de ban tu chay
