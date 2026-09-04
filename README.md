@@ -50,6 +50,37 @@ Windows Terminal (`Ctrl+Shift+W` theo cau hinh mac dinh). De go cai dat:
 .\uninstall.ps1
 ```
 
+## Dan anh cho agent
+
+Terminal khong nhan dan anh truc tiep. `tb img` doc anh dang co trong
+clipboard (vi du sau khi chup man hinh bang `Win+Shift+S`), luu thanh file
+PNG, roi tu dong copy duong dan file do vao clipboard:
+
+```powershell
+tb img
+```
+
+Sau do chi can dan (`Ctrl+V`) duong dan vao o chat cua Claude Code, Codex,
+ChatGPT... de agent tu doc file anh.
+
+## Profile mo nhieu agent cung luc
+
+Moi profile la mot danh sach lenh, moi lenh chay trong mot pane rieng khi mo
+board:
+
+```powershell
+tb profile set agents "claude,codex" columns
+tb agents
+```
+
+- `tb profile list`: liet ke cac profile da luu.
+- `tb profile remove agents`: xoa mot profile.
+- `tb agents --dry-run`: xem truoc lenh Windows Terminal se chay.
+
+Sau khi cai dat, Start Menu co san 2 shortcut **Terminal Board** (mo `tb`) va
+**Terminal Board - Agents** (mo `tb agents`) kem icon rieng, tien bam de mo
+ma khong can go lenh.
+
 ## Kiem thu
 
 ```powershell

@@ -4,7 +4,6 @@ param(
     [string]$CountOrCommand,
 
     [Parameter(Position = 1)]
-    [ValidateSet('columns', 'rows')]
     [string]$Layout,
 
     [Alias('dry-run')]
@@ -17,7 +16,10 @@ param(
     [switch]$NewWindow,
 
     [Alias('h')]
-    [switch]$Help
+    [switch]$Help,
+
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$Rest
 )
 
 $ErrorActionPreference = 'Stop'
@@ -30,16 +32,84 @@ try {
         exit 0
     }
 
+    if ($CountOrCommand -in @('img', 'image', 'clip', 'paste')) {
+        $savedPath = Save-TbClipboardImage
+        Write-Host "Da luu anh: $savedPath"
+        Write-Host 'Duong dan da duoc copy vao clipboard - dan (Ctrl+V) cho agent.'
+        exit 0
+    }
+
+    if ($CountOrCommand -eq 'profile') {
+        switch ($Layout) {
+            'set' {
+                $name = $Rest[0]
+                $commandsArg = $Rest[1]
+                $layoutArg = if ($Rest.Count -ge 3 -and $Rest[2]) { $Rest[2] } else { 'columns' }
+
+                if (-not $name -or -not $commandsArg) {
+                    throw 'Cu phap: tb profile set <ten> <lenh1,lenh2,...> [rows|columns]'
+                }
+                if ($layoutArg -notin @('columns', 'rows')) {
+                    throw "Bo cuc khong hop le: '$layoutArg'. Dung columns hoac rows."
+                }
+
+                $commands = @($commandsArg -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+                Save-TbProfile -Name $name -Commands $commands -Layout $layoutArg
+                Write-Host "Da luu profile '$name' voi $($commands.Count) lenh ($($commands -join ', '))."
+                exit 0
+            }
+            'list' {
+                $profiles = Get-TbProfiles
+                if ($profiles.Count -eq 0) {
+                    Write-Host 'Chua co profile nao. Tao bang: tb profile set <ten> <lenh1,lenh2,...>'
+                }
+                else {
+                    foreach ($key in $profiles.Keys) {
+                        $profileInfo = $profiles[$key]
+                        Write-Host "$key [$($profileInfo.Layout)] -> $($profileInfo.Commands -join ', ')"
+                    }
+                }
+                exit 0
+            }
+            'remove' {
+                $name = $Rest[0]
+                if (-not $name) {
+                    throw 'Cu phap: tb profile remove <ten>'
+                }
+                Remove-TbProfile -Name $name
+                Write-Host "Da xoa profile '$name'."
+                exit 0
+            }
+            default {
+                throw "Lenh profile khong hop le: '$Layout'. Dung: tb profile set|list|remove"
+            }
+        }
+    }
+
+    if ($Layout -and $Layout -notin @('columns', 'rows')) {
+        throw "Bo cuc khong hop le: '$Layout'. Dung columns hoac rows."
+    }
+
     $settings = Get-TbSettings
     $count = $settings.count
     $selectedLayout = if ($Layout) { $Layout } else { $settings.layout }
+    $commands = @()
 
     if ($CountOrCommand) {
         $parsedCount = 0
-        if (-not [int]::TryParse($CountOrCommand, [ref]$parsedCount)) {
-            throw "'$CountOrCommand' khong phai so terminal hop le. Vi du: tb 5"
+        if ([int]::TryParse($CountOrCommand, [ref]$parsedCount)) {
+            $count = $parsedCount
         }
-        $count = $parsedCount
+        else {
+            $profiles = Get-TbProfiles
+            if (-not $profiles.Contains($CountOrCommand)) {
+                throw "'$CountOrCommand' khong phai so terminal hop le va cung khong phai profile da luu. Xem: tb profile list"
+            }
+            $profileInfo = $profiles[$CountOrCommand]
+            $commands = $profileInfo.Commands
+            $count = $commands.Count
+            $selectedLayout = if ($Layout) { $Layout } else { $profileInfo.Layout }
+        }
     }
 
     $result = Invoke-TerminalBoard `
@@ -47,7 +117,8 @@ try {
         -Layout $selectedLayout `
         -DryRun:$DryRun `
         -NoRemember:$NoRemember `
-        -NewWindow:$NewWindow
+        -NewWindow:$NewWindow `
+        -Commands $commands
 
     if ($null -ne $result) {
         $result

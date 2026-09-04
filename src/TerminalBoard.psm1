@@ -112,6 +112,35 @@ function Get-TbSplitPlan {
     $plan.ToArray()
 }
 
+function Get-TbShellExecutable {
+    <#
+        Profile panes run a specific command instead of duplicating the
+        caller's shell, so they need a stable host. Prefer pwsh.exe (matches
+        tb.cmd's own preference) and fall back to the Windows PowerShell that
+        ships with every Windows install.
+    #>
+    $pwsh = Get-Command pwsh.exe -ErrorAction SilentlyContinue
+    if ($pwsh) {
+        return $pwsh.Source
+    }
+
+    (Get-Command powershell.exe).Source
+}
+
+function ConvertTo-TbCommandArguments {
+    <#
+        Turns a saved profile command string (e.g. "npm run dev") into the
+        argv Windows Terminal should run after "--", so the pane stays open
+        (-NoExit) once the command finishes or is interrupted.
+    #>
+    param(
+        [Parameter(Mandatory)]
+        [string]$Command
+    )
+
+    @((Get-TbShellExecutable), '-NoExit', '-Command', $Command)
+}
+
 function ConvertTo-TbWtArguments {
     param(
         [Parameter(Mandatory)]
@@ -122,7 +151,9 @@ function ConvertTo-TbWtArguments {
 
         [switch]$NewWindow,
 
-        [string]$WorkingDirectory = (Get-Location).Path
+        [string]$WorkingDirectory = (Get-Location).Path,
+
+        [string[]]$Commands = @()
     )
 
     $arguments = [System.Collections.Generic.List[string]]::new()
@@ -136,6 +167,12 @@ function ConvertTo-TbWtArguments {
         $arguments.Add('--title')
         $arguments.Add('TB 1')
         $arguments.Add('--suppressApplicationTitle')
+        if ($Commands.Count -ge 1 -and $Commands[0]) {
+            $arguments.Add('--')
+            foreach ($token in (ConvertTo-TbCommandArguments -Command $Commands[0])) {
+                $arguments.Add($token)
+            }
+        }
     }
     else {
         $arguments.Add('-w')
@@ -155,6 +192,14 @@ function ConvertTo-TbWtArguments {
         $arguments.Add('--title')
         $arguments.Add("TB $($split.PaneNumber)")
         $arguments.Add('--suppressApplicationTitle')
+
+        $commandIndex = $split.PaneNumber - 1
+        if ($Commands.Count -ge $split.PaneNumber -and $Commands[$commandIndex]) {
+            $arguments.Add('--')
+            foreach ($token in (ConvertTo-TbCommandArguments -Command $Commands[$commandIndex])) {
+                $arguments.Add($token)
+            }
+        }
         $hasPreviousCommand = $true
     }
 
@@ -235,10 +280,16 @@ function Invoke-TerminalBoard {
 
         [switch]$NoRemember,
 
-        [switch]$NewWindow
+        [switch]$NewWindow,
+
+        [string[]]$Commands = @()
     )
 
     Assert-TbPaneCount -Count $Count
+
+    if ($Commands.Count -gt 0 -and $Commands.Count -ne $Count) {
+        throw 'So lenh trong profile phai bang so pane.'
+    }
 
     if ([System.Environment]::OSVersion.Platform -ne [System.PlatformID]::Win32NT) {
         throw 'Terminal Board chi ho tro Windows.'
@@ -249,7 +300,10 @@ function Invoke-TerminalBoard {
         throw 'Khong tim thay Windows Terminal (wt.exe). Hay cai Windows Terminal truoc.'
     }
 
-    $openNewWindow = $NewWindow -or -not [bool]$env:WT_SESSION
+    # A profile assigns a command to pane 1 too, which only a fresh window
+    # can accept - the pane already running the current shell cannot be
+    # redirected into a different process.
+    $openNewWindow = $NewWindow -or -not [bool]$env:WT_SESSION -or $Commands.Count -gt 0
 
     if ($Count -eq 1 -and -not $openNewWindow) {
         if ($DryRun) {
@@ -269,7 +323,7 @@ function Invoke-TerminalBoard {
     }
 
     if ($DryRun) {
-        $arguments = ConvertTo-TbWtArguments -Count $Count -Layout $Layout -NewWindow:$openNewWindow
+        $arguments = ConvertTo-TbWtArguments -Count $Count -Layout $Layout -NewWindow:$openNewWindow -Commands $Commands
         return Format-TbCommandPreview -Arguments $arguments
     }
 
@@ -298,6 +352,10 @@ function Invoke-TerminalBoard {
             '--title', 'TB 1',
             '--suppressApplicationTitle'
         )
+        if ($Commands.Count -ge 1 -and $Commands[0]) {
+            $startArguments += '--'
+            $startArguments += (ConvertTo-TbCommandArguments -Command $Commands[0])
+        }
         Invoke-TbWtCommand -Wt $wt -Arguments $startArguments
         Start-Sleep -Milliseconds 250
     }
@@ -312,6 +370,11 @@ function Invoke-TerminalBoard {
             '--title', "TB $($split.PaneNumber)",
             '--suppressApplicationTitle'
         )
+        $commandIndex = $split.PaneNumber - 1
+        if ($Commands.Count -ge $split.PaneNumber -and $Commands[$commandIndex]) {
+            $splitArguments += '--'
+            $splitArguments += (ConvertTo-TbCommandArguments -Command $Commands[$commandIndex])
+        }
         Invoke-TbWtCommand -Wt $wt -Arguments $splitArguments
         Start-Sleep -Milliseconds 100
     }
@@ -321,16 +384,167 @@ function Invoke-TerminalBoard {
     }
 }
 
+function Get-TbImageDirectory {
+    Join-Path (Split-Path -Parent (Get-TbSettingsPath)) 'images'
+}
+
+function Save-TbClipboardImage {
+    <#
+        Reading/writing the clipboard requires an STA thread, but pwsh.exe
+        (tb.cmd's preferred host) defaults to MTA. Rather than depend on the
+        caller's apartment state, do the clipboard work in a disposable
+        powershell.exe -Sta child process every time.
+    #>
+    [CmdletBinding()]
+    param()
+
+    $directory = Get-TbImageDirectory
+    New-Item -ItemType Directory -Path $directory -Force | Out-Null
+
+    $fileName = 'img-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff') + '.png'
+    $path = Join-Path $directory $fileName
+
+    $workerPath = Join-Path $PSScriptRoot 'Save-TbClipboardImageWorker.ps1'
+    if (-not (Test-Path -LiteralPath $workerPath)) {
+        throw "Khong tim thay worker doc clipboard: $workerPath"
+    }
+
+    $powershellExe = Get-Command powershell.exe -ErrorAction SilentlyContinue
+    if (-not $powershellExe) {
+        throw 'Khong tim thay powershell.exe de doc clipboard.'
+    }
+
+    & $powershellExe.Source -NoLogo -NoProfile -Sta -File $workerPath -Path $path
+    $exitCode = $LASTEXITCODE
+
+    if ($exitCode -eq 2) {
+        throw 'Khong co anh nao trong clipboard. Chup man hinh (Win+Shift+S) hoac Copy anh roi thu lai.'
+    }
+    if ($exitCode -ne 0 -or -not (Test-Path -LiteralPath $path)) {
+        throw 'Khong doc duoc anh tu clipboard.'
+    }
+
+    $path
+}
+
+function Get-TbProfilesPath {
+    Join-Path (Split-Path -Parent (Get-TbSettingsPath)) 'profiles.json'
+}
+
+function Get-TbProfiles {
+    $result = [ordered]@{}
+
+    $path = Get-TbProfilesPath
+    if (-not (Test-Path -LiteralPath $path)) {
+        return $result
+    }
+
+    try {
+        $raw = Get-Content -LiteralPath $path -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+        foreach ($property in $raw.PSObject.Properties) {
+            $value = $property.Value
+            $commands = @($value.commands | ForEach-Object { [string]$_ })
+            $layout = if ($value.layout -in @('columns', 'rows')) { [string]$value.layout } else { 'columns' }
+            $result[$property.Name] = [pscustomobject]@{
+                Commands = $commands
+                Layout   = $layout
+            }
+        }
+    }
+    catch {
+        # A damaged profiles file should never prevent tb from running.
+    }
+
+    $result
+}
+
+function Save-TbProfilesData {
+    param(
+        [Parameter(Mandatory)]
+        [System.Collections.Specialized.OrderedDictionary]$Profiles
+    )
+
+    $path = Get-TbProfilesPath
+
+    if ($Profiles.Count -eq 0) {
+        if (Test-Path -LiteralPath $path) {
+            Remove-Item -LiteralPath $path -Force
+        }
+        return
+    }
+
+    $output = [ordered]@{}
+    foreach ($key in $Profiles.Keys) {
+        $output[$key] = [ordered]@{
+            commands = $Profiles[$key].Commands
+            layout   = $Profiles[$key].Layout
+        }
+    }
+
+    New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
+    ($output | ConvertTo-Json -Depth 5) | Set-Content -LiteralPath $path -Encoding utf8
+}
+
+function Save-TbProfile {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Name,
+
+        [Parameter(Mandatory)]
+        [string[]]$Commands,
+
+        [ValidateSet('columns', 'rows')]
+        [string]$Layout = 'columns'
+    )
+
+    if ($Commands.Count -lt $script:TbMinPaneCount -or $Commands.Count -gt $script:TbMaxPaneCount) {
+        throw "Profile phai co tu $script:TbMinPaneCount den $script:TbMaxPaneCount lenh."
+    }
+
+    $profiles = Get-TbProfiles
+    $profiles[$Name] = [pscustomobject]@{ Commands = $Commands; Layout = $Layout }
+    Save-TbProfilesData -Profiles $profiles
+}
+
+function Remove-TbProfile {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Name
+    )
+
+    $profiles = Get-TbProfiles
+    if (-not $profiles.Contains($Name)) {
+        throw "Khong tim thay profile '$Name'."
+    }
+
+    $profiles.Remove($Name)
+    Save-TbProfilesData -Profiles $profiles
+}
+
 function Show-TbHelp {
     @'
 Terminal Board (tb) - Windows
 
-Su dung:
+Bo cuc:
   tb 5              Chia terminal hien tai thanh 5 cot bang nhau
   tb 3 rows         Chia terminal hien tai thanh 3 hang bang nhau
   tb                Dung lai so luong va bo cuc lan truoc
   tb 5 --dry-run    Xem lenh Windows Terminal ma khong thay doi giao dien
   tb 5 --new-window Mo board trong mot cua so Windows Terminal moi
+
+Anh chup man hinh:
+  tb img            Luu anh dang co trong clipboard ra file va copy duong
+                     dan file do vao clipboard de dan (Ctrl+V) cho agent
+
+Profile nhieu agent:
+  tb profile set <ten> <lenh1,lenh2,...> [rows|columns]
+                     Luu mot profile, moi lenh chay trong mot pane rieng
+  tb profile list    Liet ke cac profile da luu
+  tb profile remove <ten>
+                     Xoa mot profile
+  tb <ten-profile>   Mo tat ca pane cua profile, moi pane chay agent tuong ung
+                     Vi du: tb profile set agents "claude,codex" roi tb agents
+
   tb help           Hien tro giup
 
 Yeu cau: Windows Terminal. Gioi han: 1-12 terminal.
@@ -343,10 +557,18 @@ Export-ModuleMember -Function @(
     'Get-TbSettings',
     'Save-TbSettings',
     'Get-TbSplitPlan',
+    'Get-TbShellExecutable',
+    'ConvertTo-TbCommandArguments',
     'ConvertTo-TbWtArguments',
     'Format-TbCommandPreview',
     'Write-TbLog',
     'Invoke-TbWtCommand',
     'Invoke-TerminalBoard',
+    'Get-TbImageDirectory',
+    'Save-TbClipboardImage',
+    'Get-TbProfilesPath',
+    'Get-TbProfiles',
+    'Save-TbProfile',
+    'Remove-TbProfile',
     'Show-TbHelp'
 )

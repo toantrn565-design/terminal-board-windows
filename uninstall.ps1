@@ -30,4 +30,9 @@ if (Test-Path -LiteralPath $shimPath) {
     }
 }
 
+$startMenuDirectory = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Terminal Board'
+if (Test-Path -LiteralPath $startMenuDirectory) {
+    Remove-Item -LiteralPath $startMenuDirectory -Recurse -Force
+}
+
 Write-Host 'Da go Terminal Board. Hay mo terminal moi de cap nhat PATH.'

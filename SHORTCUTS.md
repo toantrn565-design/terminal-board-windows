@@ -12,6 +12,10 @@ Các phím tắt Windows Terminal có thể khác nếu bạn đã thay đổi t
 | `tb 3 rows` | Chia pane đang chọn thành 3 hàng bằng nhau |
 | `tb` | Dùng lại số lượng và bố cục gần nhất |
 | `tb 5 --new-window` | Mở một cửa sổ mới sạch với 5 pane |
+| `tb img` | Lưu ảnh trong clipboard ra file, copy đường dẫn vào clipboard |
+| `tb profile set <tên> <lệnh1,lệnh2,...>` | Lưu một profile nhiều agent |
+| `tb agents` | Mở tất cả pane của profile `agents`, mỗi pane chạy 1 agent |
+| `tb profile list` / `tb profile remove <tên>` | Xem / xóa profile |
 | `tb help` | Hiển thị trợ giúp |
 
 Nếu tab hiện tại đã có nhiều pane, nên dùng `--new-window` để tạo một board

@@ -59,7 +59,11 @@ catch {
 Assert-Equal $invalidCountFailed $true 'Counts above the supported maximum must fail.'
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$cliOutput = & pwsh.exe -NoLogo -NoProfile -File (Join-Path $projectRoot 'tb.ps1') 4 --dry-run
+$testHost = Get-Command pwsh.exe -ErrorAction SilentlyContinue
+if (-not $testHost) {
+    $testHost = Get-Command powershell.exe
+}
+$cliOutput = & $testHost.Source -NoLogo -NoProfile -File (Join-Path $projectRoot 'tb.ps1') 4 --dry-run
 if ($LASTEXITCODE -ne 0) {
     throw 'CLI dry-run failed.'
 }
@@ -81,6 +85,63 @@ try {
 }
 finally {
     $env:WT_SESSION = $savedWtSession
+}
+
+$commandArguments = @(ConvertTo-TbCommandArguments -Command 'npm run dev')
+Assert-Equal $commandArguments[-2] '-Command' 'Command argv must pass the profile command via -Command.'
+Assert-Equal $commandArguments[-1] 'npm run dev' 'Command argv must keep the profile command intact as one token.'
+
+$profileArguments = @(ConvertTo-TbWtArguments -Count 2 -Layout columns -Commands @('claude', 'codex'))
+Assert-Equal ($profileArguments -contains '--') $true 'Profile panes must separate wt options from the launched command.'
+Assert-Equal $profileArguments[-4] 'codex' 'The last split must run the second profile command before move-focus is appended.'
+
+$savedWtSessionForProfile = $env:WT_SESSION
+try {
+    $env:WT_SESSION = 'test-session'
+    $mismatchFailed = $false
+    try {
+        Invoke-TerminalBoard -Count 2 -Layout columns -Commands @('claude') -DryRun | Out-Null
+    }
+    catch {
+        $mismatchFailed = $true
+    }
+    Assert-Equal $mismatchFailed $true 'Commands must match pane count.'
+}
+finally {
+    $env:WT_SESSION = $savedWtSessionForProfile
+}
+
+$savedLocalAppData = $env:LOCALAPPDATA
+$tempAppDataDirectory = Join-Path ([System.IO.Path]::GetTempPath()) ("tb-tests-" + [System.Guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $tempAppDataDirectory -Force | Out-Null
+try {
+    $env:LOCALAPPDATA = $tempAppDataDirectory
+
+    $emptyProfiles = Get-TbProfiles
+    Assert-Equal $emptyProfiles.Count 0 'A fresh install must start with no saved profiles.'
+
+    Save-TbProfile -Name 'agents' -Commands @('claude', 'codex') -Layout 'columns'
+    $savedProfiles = Get-TbProfiles
+    Assert-Equal $savedProfiles.Count 1 'Saving a profile must persist exactly one entry.'
+    Assert-Equal ($savedProfiles['agents'].Commands -join ',') 'claude,codex' 'Saved profile commands must round-trip in order.'
+    Assert-Equal $savedProfiles['agents'].Layout 'columns' 'Saved profile layout must round-trip.'
+
+    Remove-TbProfile -Name 'agents'
+    $profilesAfterRemoval = Get-TbProfiles
+    Assert-Equal $profilesAfterRemoval.Count 0 'Removing the only profile must leave none behind.'
+
+    $removeMissingFailed = $false
+    try {
+        Remove-TbProfile -Name 'does-not-exist'
+    }
+    catch {
+        $removeMissingFailed = $true
+    }
+    Assert-Equal $removeMissingFailed $true 'Removing an unknown profile must fail.'
+}
+finally {
+    $env:LOCALAPPDATA = $savedLocalAppData
+    Remove-Item -LiteralPath $tempAppDataDirectory -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 Write-Host 'All Terminal Board tests passed.'
