@@ -13,7 +13,7 @@ Các phím tắt Windows Terminal có thể khác nếu bạn đã thay đổi t
 | `tb` | Dùng lại số lượng và bố cục gần nhất |
 | `tb 5 --new-window` | Mở một cửa sổ mới sạch với 5 pane |
 | `tb img` | Lưu ảnh trong clipboard ra file, copy đường dẫn vào clipboard |
-| `Ctrl + Alt + I` | Phím tắt toàn hệ thống, làm việc như `tb img` nhưng không cần mở terminal |
+| `Ctrl + Alt + C` | Phím tắt toàn hệ thống, làm việc như `tb img` nhưng không cần mở terminal |
 | `tb profile set <tên> <lệnh1,lệnh2,...>` | Lưu một profile nhiều agent |
 | `tb agents` | Mở tất cả pane của profile `agents`, mỗi pane chạy 1 agent |
 | `tb profile list` / `tb profile remove <tên>` | Xem / xóa profile |

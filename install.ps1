@@ -140,9 +140,9 @@ try {
         $hotkeyShortcut.Description = 'Luu anh trong clipboard ra file va copy duong dan vao clipboard'
         $hotkeyShortcut.WindowStyle = 7
         if ($iconPath) { $hotkeyShortcut.IconLocation = $iconPath }
-        $hotkeyShortcut.Hotkey = 'CTRL+ALT+I'
+        $hotkeyShortcut.Hotkey = 'CTRL+ALT+C'
         $hotkeyShortcut.Save()
-        Write-Host 'Phim tat chup anh: Ctrl+Alt+I (doi trong thuoc tinh shortcut neu bi trung).'
+        Write-Host 'Phim tat chup anh: Ctrl+Alt+C (doi trong thuoc tinh shortcut neu bi trung).'
     }
     catch {
         Write-Warning "Khong gan duoc phim tat chup anh: $($_.Exception.Message)"
