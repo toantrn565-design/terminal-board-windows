@@ -132,8 +132,11 @@ try {
     Write-Host "Da tao shortcut trong Start Menu: Terminal Board"
 
     try {
+        # Desktop shortcut keys register far more reliably than Start Menu
+        # ones, which Explorer sometimes fails to pick up.
+        $desktopDirectory = [Environment]::GetFolderPath('Desktop')
         $hotkeyScriptPath = Join-Path $moduleDirectory 'Invoke-TbImageHotkey.ps1'
-        $hotkeyShortcut = $wshShell.CreateShortcut((Join-Path $startMenuDirectory 'Terminal Board - Capture Image.lnk'))
+        $hotkeyShortcut = $wshShell.CreateShortcut((Join-Path $desktopDirectory 'Terminal Board - Capture Image.lnk'))
         $hotkeyShortcut.TargetPath = (Get-Command powershell.exe).Source
         $hotkeyShortcut.Arguments = "-NoLogo -NoProfile -WindowStyle Hidden -File `"$hotkeyScriptPath`""
         $hotkeyShortcut.WorkingDirectory = $env:USERPROFILE

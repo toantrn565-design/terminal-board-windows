@@ -35,4 +35,9 @@ if (Test-Path -LiteralPath $startMenuDirectory) {
     Remove-Item -LiteralPath $startMenuDirectory -Recurse -Force
 }
 
+$desktopHotkeyShortcut = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Terminal Board - Capture Image.lnk'
+if (Test-Path -LiteralPath $desktopHotkeyShortcut) {
+    Remove-Item -LiteralPath $desktopHotkeyShortcut -Force
+}
+
 Write-Host 'Da go Terminal Board. Hay mo terminal moi de cap nhat PATH.'

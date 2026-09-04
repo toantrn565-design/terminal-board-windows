@@ -94,9 +94,11 @@ ChatGPT... de agent tu doc file anh.
 **Nhanh hon:** sau khi cai dat, phim tat `Ctrl+Alt+C` chay `tb img` ngam,
 dung o bat ky dau tren Windows, khong can mo terminal truoc. Thanh cong se
 co mot tieng beep ngan, khong co anh trong clipboard se co hai tieng beep
-tram. Neu `Ctrl+Alt+C` bi trung voi ung dung khac, doi trong Start Menu >
-Terminal Board > chuot phai vao "Terminal Board - Capture Image" > Properties
-> Shortcut key.
+tram. Phim tat duoc gan qua shortcut **"Terminal Board - Capture Image"**
+tren Desktop (shortcut key tren Start Menu khong on dinh bang). Neu
+`Ctrl+Alt+C` bi trung voi ung dung khac, chuot phai vao shortcut do >
+Properties > doi Shortcut key, roi khoi dong lai Explorer (hoac dang xuat -
+dang nhap lai) de Windows nhan phim tat moi.
 
 ## Profile mo nhieu agent cung luc
 
