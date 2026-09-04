@@ -63,6 +63,13 @@ tb img
 Sau do chi can dan (`Ctrl+V`) duong dan vao o chat cua Claude Code, Codex,
 ChatGPT... de agent tu doc file anh.
 
+**Nhanh hon:** sau khi cai dat, phim tat `Ctrl+Alt+I` chay `tb img` ngam,
+dung o bat ky dau tren Windows, khong can mo terminal truoc. Thanh cong se
+co mot tieng beep ngan, khong co anh trong clipboard se co hai tieng beep
+tram. Neu `Ctrl+Alt+I` bi trung voi ung dung khac, doi trong Start Menu >
+Terminal Board > chuot phai vao "Terminal Board - Capture Image" > Properties
+> Shortcut key.
+
 ## Profile mo nhieu agent cung luc
 
 Moi profile la mot danh sach lenh, moi lenh chay trong mot pane rieng khi mo

@@ -21,6 +21,7 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'tb.ps1') -Destination $installD
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'tb.cmd') -Destination $installDirectory -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'src\TerminalBoard.psm1') -Destination $moduleDirectory -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'src\Save-TbClipboardImageWorker.ps1') -Destination $moduleDirectory -Force
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'src\Invoke-TbImageHotkey.ps1') -Destination $moduleDirectory -Force
 
 if (Test-Path -LiteralPath $windowsAppsDirectory) {
     $canInstallShim = -not (Test-Path -LiteralPath $shimPath)
@@ -129,6 +130,23 @@ try {
     $agentsShortcut.Save()
 
     Write-Host "Da tao shortcut trong Start Menu: Terminal Board"
+
+    try {
+        $hotkeyScriptPath = Join-Path $moduleDirectory 'Invoke-TbImageHotkey.ps1'
+        $hotkeyShortcut = $wshShell.CreateShortcut((Join-Path $startMenuDirectory 'Terminal Board - Capture Image.lnk'))
+        $hotkeyShortcut.TargetPath = (Get-Command powershell.exe).Source
+        $hotkeyShortcut.Arguments = "-NoLogo -NoProfile -WindowStyle Hidden -File `"$hotkeyScriptPath`""
+        $hotkeyShortcut.WorkingDirectory = $env:USERPROFILE
+        $hotkeyShortcut.Description = 'Luu anh trong clipboard ra file va copy duong dan vao clipboard'
+        $hotkeyShortcut.WindowStyle = 7
+        if ($iconPath) { $hotkeyShortcut.IconLocation = $iconPath }
+        $hotkeyShortcut.Hotkey = 'CTRL+ALT+I'
+        $hotkeyShortcut.Save()
+        Write-Host 'Phim tat chup anh: Ctrl+Alt+I (doi trong thuoc tinh shortcut neu bi trung).'
+    }
+    catch {
+        Write-Warning "Khong gan duoc phim tat chup anh: $($_.Exception.Message)"
+    }
 }
 catch {
     Write-Warning "Khong tao duoc shortcut Start Menu: $($_.Exception.Message)"
