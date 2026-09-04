@@ -7,6 +7,21 @@ pane doc lap trong Windows Terminal.
 No chi quan ly bo cuc; moi pane van la terminal binh thuong de ban tu chay
 `claude`, `codex`, server, log, hoac lenh bat ky.
 
+## Huong dan nhanh
+
+1. **Cai lan dau**: mo thu muc `Terminal Board Setup` tren Desktop, nhap dup
+   `setup.cmd`. Cai xong moi lan la dung duoc, khong can lam lai.
+2. **Mo board**: bam Start Menu, go "Terminal Board", Enter. Hoac go
+   `tb 5` trong bat ky terminal nao.
+3. **Gui anh cho agent**: chup man hinh (`Win+Shift+S`), bam `Ctrl+Alt+C`
+   (nghe 1 tieng beep la xong), roi `Ctrl+V` vao o chat cua agent.
+4. **Mo nhieu agent cung luc**: bam Start Menu, go "Terminal Board - Agents",
+   Enter. Se mo `claude` va `codex` canh nhau trong 1 cua so.
+5. **Go cai dat**: chay `.\uninstall.ps1` tai thu muc du an.
+
+Chi tiet tung phan, cach doi profile, cach dong goi lai khi co ban moi... xem
+cac muc ben duoi.
+
 ## Cai dat
 
 Mo PowerShell tai thu muc du an va chay:
