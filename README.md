@@ -23,6 +23,19 @@ Bo cai dat chuong trinh va shim `tb.cmd` trong thu muc WindowsApps cua nguoi
 dung. Vi vay lenh co the dung ngay, van hoat dong sau khi khoi dong lai Windows
 va khong can sua PATH thu cong.
 
+### Dong goi ban phat hanh
+
+De tao mot goi cai dat doc lap (khong can git, chi giai nen/copy va nhap dup
+`setup.cmd`), chay tai thu muc du an:
+
+```powershell
+.\Build-Release.ps1
+```
+
+Ket qua nam trong `dist\TerminalBoard` (thu muc, dung de copy thang ra
+Desktop hoac USB) va `dist\TerminalBoard.zip` (dung de chia se). Chay lai
+lenh nay moi khi code thay doi de goi cai dat luon la ban moi nhat.
+
 ## Su dung
 
 ```powershell

@@ -1,5 +1,6 @@
-# Release archives are uploaded as GitHub Release assets.
-dist/*.zip
+# Built by Build-Release.ps1; release archives are uploaded as GitHub
+# Release assets instead of being committed.
+dist/
 
 # Local editor and OS files.
 .vscode/
