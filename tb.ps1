@@ -32,11 +32,64 @@ try {
         exit 0
     }
 
-    if ($CountOrCommand -in @('img', 'image', 'clip', 'paste')) {
+    if ($CountOrCommand -in @('img', 'image', 'paste')) {
         $savedPath = Save-TbClipboardImage
-        Write-Host "Da luu anh: $savedPath"
-        Write-Host 'Duong dan da duoc copy vao clipboard - dan (Ctrl+V) cho agent.'
+        Write-Host "Saved picture: $savedPath"
+        Write-Host 'The path was copied to the clipboard - paste it (Ctrl+V) for the agent.'
         exit 0
+    }
+
+    if ($CountOrCommand -eq 'ui') {
+        $helperPath = Get-TbClipHelperPath
+        if (-not (Test-Path -LiteralPath $helperPath)) {
+            throw 'The settings screen is not installed. Run setup.cmd again. You can still use: tb 5, tb desk.'
+        }
+        Start-Process -FilePath $helperPath -ArgumentList '--desk'
+        exit 0
+    }
+
+    if ($CountOrCommand -eq 'desk') {
+        $deskResult = Open-TbDesk -DryRun:$DryRun
+        if ($null -ne $deskResult) {
+            $deskResult
+        }
+        exit 0
+    }
+
+    if ($CountOrCommand -eq 'clip') {
+        $clipAction = if ($Layout) { $Layout } else { 'status' }
+        switch ($clipAction) {
+            'on' {
+                Set-TbClipAutostart -Enabled $true
+                Start-TbClipHelper
+                Write-Host 'Screenshot helper turned on (it also starts with Windows).'
+                Write-Host 'Take a screenshot (Win+Shift+S), then press Ctrl+V in the terminal to paste the picture path.'
+                exit 0
+            }
+            'off' {
+                Stop-TbClipHelper
+                Set-TbClipAutostart -Enabled $false
+                Write-Host 'Screenshot helper turned off. Turn it back on with: tb clip on'
+                exit 0
+            }
+            'status' {
+                $clipStatus = Get-TbClipHelperStatus
+                if (-not $clipStatus.Installed) {
+                    Write-Host 'The screenshot helper is not installed. Run setup.cmd again.'
+                }
+                else {
+                    Write-Host "Running: $(if ($clipStatus.Running) { 'yes' } else { 'no' })"
+                    Write-Host "Starts with Windows: $(if ($clipStatus.Autostart) { 'yes' } else { 'no' })"
+                    if (-not $clipStatus.Running) {
+                        Write-Host 'Turn it on with: tb clip on'
+                    }
+                }
+                exit 0
+            }
+            default {
+                throw "Unknown clip command: '$clipAction'. Use: tb clip on|off|status"
+            }
+        }
     }
 
     if ($CountOrCommand -eq 'profile') {
@@ -47,21 +100,21 @@ try {
                 $layoutArg = if ($Rest.Count -ge 3 -and $Rest[2]) { $Rest[2] } else { 'columns' }
 
                 if (-not $name -or -not $commandsArg) {
-                    throw 'Cu phap: tb profile set <ten> <lenh1,lenh2,...> [rows|columns]'
+                    throw 'Usage: tb profile set <name> <cmd1,cmd2,...> [rows|columns]'
                 }
                 if ($layoutArg -notin @('columns', 'rows')) {
-                    throw "Bo cuc khong hop le: '$layoutArg'. Dung columns hoac rows."
+                    throw "Invalid layout: '$layoutArg'. Use columns or rows."
                 }
 
                 $commands = @($commandsArg -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
                 Save-TbProfile -Name $name -Commands $commands -Layout $layoutArg
-                Write-Host "Da luu profile '$name' voi $($commands.Count) lenh ($($commands -join ', '))."
+                Write-Host "Saved profile '$name' with $($commands.Count) command(s) ($($commands -join ', '))."
                 exit 0
             }
             'list' {
                 $profiles = Get-TbProfiles
                 if ($profiles.Count -eq 0) {
-                    Write-Host 'Chua co profile nao. Tao bang: tb profile set <ten> <lenh1,lenh2,...>'
+                    Write-Host 'No profiles yet. Create one with: tb profile set <name> <cmd1,cmd2,...>'
                 }
                 else {
                     foreach ($key in $profiles.Keys) {
@@ -74,20 +127,20 @@ try {
             'remove' {
                 $name = $Rest[0]
                 if (-not $name) {
-                    throw 'Cu phap: tb profile remove <ten>'
+                    throw 'Usage: tb profile remove <name>'
                 }
                 Remove-TbProfile -Name $name
-                Write-Host "Da xoa profile '$name'."
+                Write-Host "Removed profile '$name'."
                 exit 0
             }
             default {
-                throw "Lenh profile khong hop le: '$Layout'. Dung: tb profile set|list|remove"
+                throw "Unknown profile command: '$Layout'. Use: tb profile set|list|remove"
             }
         }
     }
 
     if ($Layout -and $Layout -notin @('columns', 'rows')) {
-        throw "Bo cuc khong hop le: '$Layout'. Dung columns hoac rows."
+        throw "Invalid layout: '$Layout'. Use columns or rows."
     }
 
     $settings = Get-TbSettings
@@ -103,7 +156,7 @@ try {
         else {
             $profiles = Get-TbProfiles
             if (-not $profiles.Contains($CountOrCommand)) {
-                throw "'$CountOrCommand' khong phai so terminal hop le va cung khong phai profile da luu. Xem: tb profile list"
+                throw "'$CountOrCommand' is neither a valid pane count nor a saved profile. See: tb profile list"
             }
             $profileInfo = $profiles[$CountOrCommand]
             $commands = $profileInfo.Commands

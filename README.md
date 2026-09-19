@@ -1,57 +1,105 @@
 # Terminal Board (`tb`)
 
-[Hướng dẫn phím tắt và quản lý pane](SHORTCUTS.md)
+[Shortcuts and pane management guide](SHORTCUTS.md)
 
-`tb` la cong cu danh rieng cho Windows, chia terminal hien tai thanh nhieu
-pane doc lap trong Windows Terminal.
-No chi quan ly bo cuc; moi pane van la terminal binh thuong de ban tu chay
-`claude`, `codex`, server, log, hoac lenh bat ky.
+`tb` is a Windows tool that splits Windows Terminal into several independent
+panes. It only manages the layout: every pane is an ordinary terminal where you
+run `claude`, `codex`, a dev server, a log tail, or any other command.
 
-## Huong dan nhanh
+## Quick start
 
-1. **Cai lan dau**: mo thu muc `Terminal Board Setup` tren Desktop, nhap dup
-   `setup.cmd`. Cai xong moi lan la dung duoc, khong can lam lai.
-2. **Mo board**: bam Start Menu, go "Terminal Board", Enter. Hoac go
-   `tb 5` trong bat ky terminal nao.
-3. **Gui anh cho agent**: chup man hinh (`Win+Shift+S`), bam `Ctrl+Alt+C`
-   (nghe 1 tieng beep la xong), roi `Ctrl+V` vao o chat cua agent.
-4. **Mo nhieu agent cung luc**: bam Start Menu, go "Terminal Board - Agents",
-   Enter. Se mo `claude` va `codex` canh nhau trong 1 cua so.
-5. **Go cai dat**: chay `.\uninstall.ps1` tai thu muc du an.
+1. **Install once**: open the `Terminal Board Setup` folder and double-click
+   `setup.cmd`. After that it just works; there is nothing to repeat.
+2. **Open a workspace**: click the **Terminal Board** icon on the Desktop (or
+   double-click the icon by the clock, or use the Start Menu). The settings
+   screen appears: pick the working folder, the number of panes (1-12), the
+   layout, and what each pane runs (Terminal, Claude Code, Codex, Antigravity,
+   or any command), then click **Open workspace**. Your choices are remembered.
+   To open the saved workspace instantly, without the screen, use Start Menu >
+   "Terminal Board - Quick Open" or type `tb desk`. You can also type `tb 5` in
+   any terminal to split it into 5 panes right away.
+3. **Send a screenshot to an agent**: take a screenshot (`Win+Shift+S`), then
+   press `Ctrl+V` in the terminal. The picture's file path is pasted and the
+   agent reads the image itself. No other key is needed (see "Pasting
+   screenshots" below).
+4. **Open several agents at once**: the settings screen does this (pick an agent
+   per pane). For a one-click Start Menu launcher, create a profile named
+   `agents` once (see "Multi-agent profiles" below), then use Start Menu >
+   "Terminal Board - Agents".
+5. **Uninstall**: run `.\uninstall.ps1` in the project folder.
 
-Chi tiet tung phan, cach doi profile, cach dong goi lai khi co ban moi... xem
-cac muc ben duoi.
+The sections below cover each part in detail, how to change profiles, and how to
+repackage the kit after a change.
 
-## Cai dat
+## Installation
 
-Mo PowerShell tai thu muc du an va chay:
+Open PowerShell in the project folder and run:
 
 ```powershell
 .\install.ps1
 ```
 
-Hoac tren may Windows khac: giai nen goi phat hanh va nhap dup `setup.cmd`.
+Or, on another Windows PC, unzip the release package and double-click
+`setup.cmd`.
 
-Mo mot terminal moi de PATH duoc cap nhat.
+Open a new terminal afterwards so PATH is refreshed.
 
-Bo cai dat chuong trinh va shim `tb.cmd` trong thu muc WindowsApps cua nguoi
-dung. Vi vay lenh co the dung ngay, van hoat dong sau khi khoi dong lai Windows
-va khong can sua PATH thu cong.
+The installer puts the program and a `tb.cmd` shim in the user's WindowsApps
+folder, so the command works immediately, survives a restart, and needs no
+manual PATH edits.
 
-### Dong goi ban phat hanh
+### Building the release package
 
-De tao mot goi cai dat doc lap (khong can git, chi giai nen/copy va nhap dup
-`setup.cmd`), chay tai thu muc du an:
+To create a standalone kit (no git needed, just unzip or copy it and
+double-click `setup.cmd`), run this in the project folder:
 
 ```powershell
 .\Build-Release.ps1
 ```
 
-Ket qua nam trong `dist\TerminalBoard` (thu muc, dung de copy thang ra
-Desktop hoac USB) va `dist\TerminalBoard.zip` (dung de chia se). Chay lai
-lenh nay moi khi code thay doi de goi cai dat luon la ban moi nhat.
+The result is `dist\TerminalBoard` (a folder you can copy straight to the
+Desktop or a USB stick) and `dist\TerminalBoard.zip` (for sharing). Run it again
+whenever the code changes so the kit is always current.
 
-## Su dung
+## The settings screen (choose panes and agents)
+
+Open it with the **Terminal Board** icon on the Desktop, with `tb ui`, or by
+double-clicking the Terminal Board icon in the system tray (by the clock). On
+this screen:
+
+- **Working folder**: every pane starts in this folder.
+- **Number of panes**: from 1 to 12. **Layout**: side by side (columns) or
+  stacked (rows). Panes are always split into equal sizes.
+- **What runs in each pane?**: for each pane choose *Terminal (PowerShell)*,
+  *Claude Code*, *Codex*, *Antigravity*, or *Custom* to type any command. Use
+  "Quick presets" to set a whole arrangement at once, then adjust single panes.
+- **Open workspace**: opens a new maximized window (the taskbar stays visible)
+  and remembers your choices. **Save settings** only saves, without opening.
+
+The screen has 4 luxurious colour themes; switch between them with the 4 dots in
+the top-right corner (the choice is remembered): **Imperial Gold** (royal gold,
+the default), **Midnight Gold** (navy blue with champagne gold), **Emerald Gold**
+(emerald green with gold) and **Royal Burgundy** (wine red with rose gold). Each
+theme has a soft translucent light-ray pattern behind the panels, so the
+background is never one flat colour.
+
+To use **your own picture** as the background, click the picture button next to
+the colour dots and choose a PNG or JPG file. The picture shows softly behind the
+panels and is remembered (the app keeps its own copy in its data folder, so it is
+fine to delete the original). **Right-click** the picture button to remove the
+picture and go back to the default pattern.
+
+Settings are stored in `%LOCALAPPDATA%\TerminalBoard\desk.json`. `tb desk` (or
+Start Menu > "Terminal Board - Quick Open") opens the saved workspace right away
+without showing the settings screen.
+
+The screen is prepared in the background shortly after Windows starts (roughly
+80 MB of RAM), so clicking the icon shows it almost instantly (under 0.2
+seconds). If it is not used for 6 hours it shuts itself down and the next open
+takes about 3 seconds. `tb clip off` turns off the screenshot helper together
+with this prepared screen.
+
+## Usage
 
 ```powershell
 tb 5
@@ -61,65 +109,78 @@ tb 5 --dry-run
 tb 5 --new-window
 ```
 
-- `tb 5`: chia pane hien tai thanh 5 cot bang nhau.
-- `tb 3 rows`: chia pane hien tai thanh 3 hang bang nhau.
-- `tb`: dung lai so luong va bo cuc gan nhat; mac dinh la 5 cot.
-- `--new-window`: tao mot cua so Windows Terminal moi.
-- `--dry-run`: chi in lenh se chay.
+- `tb 5`: split the current pane into 5 equal columns.
+- `tb 3 rows`: split the current pane into 3 equal rows.
+- `tb`: reuse the most recent count and layout; the default is 5 columns.
+- `--new-window`: create a new Windows Terminal window, maximized but with the
+  taskbar still visible (not fullscreen). If a window ever goes fullscreen and
+  hides the taskbar, press `F11` to leave fullscreen.
+- `--dry-run`: only print the command that would run.
 
-Moi pane moi se sao chep profile terminal Windows dang hoat dong. Vi du, neu
-ban dang o PowerShell thi cac pane moi cung la PowerShell; neu dang o CMD thi
-cac pane moi cung la CMD.
+Each new pane copies the active Windows Terminal profile. For example, if you are
+in PowerShell the new panes are PowerShell too; in CMD they are CMD.
 
-Gioi han hien tai la 1-12 pane. De dong mot pane, dung phim tat dong pane cua
-Windows Terminal (`Ctrl+Shift+W` theo cau hinh mac dinh). De go cai dat:
+The limit is 1-12 panes. To close a pane use Windows Terminal's close-pane
+shortcut (`Ctrl+Shift+W` by default). To uninstall:
 
 ```powershell
 .\uninstall.ps1
 ```
 
-## Dan anh cho agent
+## Pasting screenshots
 
-Terminal khong nhan dan anh truc tiep. `tb img` doc anh dang co trong
-clipboard (vi du sau khi chup man hinh bang `Win+Shift+S`), luu thanh file
-PNG, roi tu dong copy duong dan file do vao clipboard:
+A terminal can only paste text, not pictures: pressing `Ctrl+V` when the
+clipboard holds just a picture pastes nothing. So Terminal Board installs a
+**screenshot helper** that runs in the background (an icon in the system tray,
+by the clock) and starts with Windows:
+
+1. Take a screenshot as usual: `Win+Shift+S`, `PrintScreen`, or copy a picture
+   from Paint.
+2. The helper saves the picture as a PNG file and adds the file path to the
+   clipboard, **keeping the picture too**.
+3. Press `Ctrl+V` in the terminal (Claude Code, Codex...): the path appears and
+   the agent reads the image file. Press `Ctrl+V` in Word, Paint, a chat app...:
+   the picture is pasted as usual.
+
+Pictures are saved in `%LOCALAPPDATA%\TerminalBoard\images` and deleted after 30
+days. Only plain pictures (screenshots, pictures from Paint) are handled. A
+picture that comes with text, files, or a rich format (Office, browsers...) is
+left alone. Right-click the tray icon to Pause, Open the screenshots folder, or
+Exit.
+
+**Claude Code on Windows** also has a built-in way that needs no helper: take a
+screenshot, then press `Alt+V`.
 
 ```powershell
-tb img
+tb clip            # is the screenshot helper running?
+tb clip off        # turn it off completely (no autostart with Windows)
+tb clip on         # turn it back on
+tb img             # save the clipboard picture to a file manually
 ```
 
-Sau do chi can dan (`Ctrl+V`) duong dan vao o chat cua Claude Code, Codex,
-ChatGPT... de agent tu doc file anh.
+If Windows blocks the helper (antivirus...), Terminal Board still works with
+`Alt+V` in Claude Code and the `tb img` command.
 
-**Nhanh hon:** sau khi cai dat, phim tat `Ctrl+Alt+C` chay `tb img` ngam,
-dung o bat ky dau tren Windows, khong can mo terminal truoc. Thanh cong se
-co mot tieng beep ngan, khong co anh trong clipboard se co hai tieng beep
-tram. Phim tat duoc gan qua shortcut **"Terminal Board - Capture Image"**
-tren Desktop (shortcut key tren Start Menu khong on dinh bang). Neu
-`Ctrl+Alt+C` bi trung voi ung dung khac, chuot phai vao shortcut do >
-Properties > doi Shortcut key, roi khoi dong lai Explorer (hoac dang xuat -
-dang nhap lai) de Windows nhan phim tat moi.
+## Multi-agent profiles
 
-## Profile mo nhieu agent cung luc
-
-Moi profile la mot danh sach lenh, moi lenh chay trong mot pane rieng khi mo
-board:
+A profile is a list of commands; each command runs in its own pane when the
+board opens:
 
 ```powershell
 tb profile set agents "claude,codex" columns
 tb agents
 ```
 
-- `tb profile list`: liet ke cac profile da luu.
-- `tb profile remove agents`: xoa mot profile.
-- `tb agents --dry-run`: xem truoc lenh Windows Terminal se chay.
+- `tb profile list`: list the saved profiles.
+- `tb profile remove agents`: delete a profile.
+- `tb agents --dry-run`: preview the Windows Terminal command that would run.
 
-Sau khi cai dat, Start Menu co san 2 shortcut **Terminal Board** (mo `tb`) va
-**Terminal Board - Agents** (mo `tb agents`) kem icon rieng, tien bam de mo
-ma khong can go lenh.
+After installation the Start Menu has 3 shortcuts with their own icon:
+**Terminal Board** (the settings screen), **Terminal Board - Quick Open** (opens
+the saved workspace) and **Terminal Board - Agents** (runs `tb agents`).
 
-## Kiem thu
+## Tests
 
 ```powershell
-pwsh -NoProfile -File .\tests\TerminalBoard.Tests.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tests\TerminalBoard.Tests.ps1
 ```

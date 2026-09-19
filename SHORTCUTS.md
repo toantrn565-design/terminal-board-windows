@@ -1,78 +1,82 @@
-# Phím tắt Terminal Board và Windows Terminal
+# Terminal Board and Windows Terminal shortcuts
 
-Tài liệu này tổng hợp các lệnh thường dùng sau khi tạo board bằng `tb`.
-Các phím tắt Windows Terminal có thể khác nếu bạn đã thay đổi trong
+This page collects the commands you will use most after creating a board with
+`tb`. The Windows Terminal shortcuts may differ if you changed them in
 `Settings > Actions`.
 
-## Lệnh Terminal Board
+## Terminal Board commands
 
-| Lệnh | Chức năng |
+| Command | What it does |
 | --- | --- |
-| `tb 5` | Chia pane đang chọn thành 5 cột bằng nhau |
-| `tb 3 rows` | Chia pane đang chọn thành 3 hàng bằng nhau |
-| `tb` | Dùng lại số lượng và bố cục gần nhất |
-| `tb 5 --new-window` | Mở một cửa sổ mới sạch với 5 pane |
-| `tb img` | Lưu ảnh trong clipboard ra file, copy đường dẫn vào clipboard |
-| `Ctrl + Alt + C` | Phím tắt toàn hệ thống, làm việc như `tb img` nhưng không cần mở terminal |
-| `tb profile set <tên> <lệnh1,lệnh2,...>` | Lưu một profile nhiều agent |
-| `tb agents` | Mở tất cả pane của profile `agents`, mỗi pane chạy 1 agent |
-| `tb profile list` / `tb profile remove <tên>` | Xem / xóa profile |
-| `tb help` | Hiển thị trợ giúp |
+| `tb ui` | Open the settings screen: working folder, number of panes, and what each pane runs (Terminal, Claude Code, Codex, Antigravity) |
+| `tb desk` | Open the workspace you saved last time right away, without asking again |
+| `tb 5` | Split the selected pane into 5 equal columns |
+| `tb 3 rows` | Split the selected pane into 3 equal rows |
+| `tb` | Reuse the most recent count and layout |
+| `tb 5 --new-window` | Open a clean new window with 5 panes |
+| `Win + Shift + S`, then `Ctrl + V` | Take a screenshot and paste it into the terminal: the background helper saves the picture and pastes its file path |
+| `Alt + V` | Claude Code on Windows only: paste the clipboard picture directly |
+| `tb clip` / `tb clip on` / `tb clip off` | Check / turn on / turn off the background screenshot helper |
+| `tb img` | Save the clipboard picture to a file manually and copy its path to the clipboard |
+| `tb profile set <name> <cmd1,cmd2,...>` | Save a multi-agent profile |
+| `tb agents` | Open every pane of the `agents` profile, one agent per pane |
+| `tb profile list` / `tb profile remove <name>` | List / delete profiles |
+| `tb help` | Show help |
 
-Nếu tab hiện tại đã có nhiều pane, nên dùng `--new-window` để tạo một board
-mới có đúng số pane mong muốn.
+If the current tab already has several panes, use `--new-window` to get a fresh
+board with exactly the number of panes you want.
 
-## Điều hướng và thay đổi kích thước pane
+## Navigating and resizing panes
 
-| Phím tắt | Chức năng |
+| Shortcut | What it does |
 | --- | --- |
-| `Alt + ←` | Chuyển sang pane bên trái |
-| `Alt + →` | Chuyển sang pane bên phải |
-| `Alt + ↑` | Chuyển sang pane phía trên |
-| `Alt + ↓` | Chuyển sang pane phía dưới |
-| `Alt + Shift + ←` | Thay đổi kích thước về bên trái |
-| `Alt + Shift + →` | Thay đổi kích thước về bên phải |
-| `Alt + Shift + ↑` | Thay đổi kích thước lên trên |
-| `Alt + Shift + ↓` | Thay đổi kích thước xuống dưới |
+| `Alt + ←` | Move focus to the pane on the left |
+| `Alt + →` | Move focus to the pane on the right |
+| `Alt + ↑` | Move focus to the pane above |
+| `Alt + ↓` | Move focus to the pane below |
+| `Alt + Shift + ←` | Resize to the left |
+| `Alt + Shift + →` | Resize to the right |
+| `Alt + Shift + ↑` | Resize upward |
+| `Alt + Shift + ↓` | Resize downward |
 
-## Tạo và đóng pane
+## Creating and closing panes
 
-| Phím tắt | Chức năng |
+| Shortcut | What it does |
 | --- | --- |
-| `Alt + Shift + +` | Tạo pane dọc bên phải |
-| `Alt + Shift + -` | Tạo pane ngang bên dưới |
-| `Alt + Shift + D` | Nhân đôi profile của pane hiện tại |
-| `Ctrl + Shift + W` | Đóng pane đang chọn |
-| `exit` | Thoát shell; pane thường sẽ tự đóng |
+| `Alt + Shift + +` | Split a new pane to the right |
+| `Alt + Shift + -` | Split a new pane below |
+| `Alt + Shift + D` | Duplicate the current pane's profile |
+| `Ctrl + Shift + W` | Close the selected pane |
+| `exit` | Quit the shell; a normal pane closes by itself |
 
-Khi tab chỉ còn một pane, `Ctrl + Shift + W` sẽ đóng cả tab.
+When a tab has only one pane left, `Ctrl + Shift + W` closes the whole tab.
 
-## Quản lý tab
+## Managing tabs
 
-| Phím tắt | Chức năng |
+| Shortcut | What it does |
 | --- | --- |
-| `Ctrl + Shift + T` | Mở tab mới |
-| `Ctrl + Tab` | Chuyển sang tab tiếp theo |
-| `Ctrl + Shift + Tab` | Chuyển về tab trước |
-| `Ctrl + Shift + P` | Mở Command Palette |
+| `Ctrl + Shift + T` | Open a new tab |
+| `Ctrl + Tab` | Switch to the next tab |
+| `Ctrl + Shift + Tab` | Switch to the previous tab |
+| `Ctrl + Shift + P` | Open the Command Palette |
 
-## Tách pane thành tab hoặc cửa sổ riêng
+## Moving a pane to its own tab or window
 
-Chuyển pane đang chọn thành một tab mới trong cùng cửa sổ:
+Turn the selected pane into a new tab in the same window:
 
 ```powershell
 wt -w 0 move-pane -t 99
 ```
 
-Tách thẳng pane thành cửa sổ riêng:
+Move a pane straight into its own window:
 
-1. Bấm chọn pane.
-2. Nhấn `Ctrl + Shift + P`.
-3. Tìm `Move pane to new window`.
-4. Nhấn `Enter`.
+1. Click the pane to select it.
+2. Press `Ctrl + Shift + P`.
+3. Search for `Move pane to new window`.
+4. Press `Enter`.
 
-Bạn có thể tự đặt `Ctrl + Alt + N` cho thao tác này trong
-`Settings > Actions`, hoặc thêm action sau vào `settings.json`:
+You can bind `Ctrl + Alt + N` to this action in `Settings > Actions`, or add the
+following action to `settings.json`:
 
 ```json
 {
@@ -84,18 +88,18 @@ Bạn có thể tự đặt `Ctrl + Alt + N` cho thao tác này trong
 }
 ```
 
-## Sao chép, dán và hiển thị
+## Copy, paste and display
 
-| Phím tắt | Chức năng |
+| Shortcut | What it does |
 | --- | --- |
-| `Ctrl + Shift + C` | Sao chép nội dung đã chọn |
-| `Ctrl + Shift + V` | Dán |
-| `Ctrl + Shift + F` | Tìm kiếm trong terminal |
-| `Ctrl + +` | Tăng cỡ chữ |
-| `Ctrl + -` | Giảm cỡ chữ |
-| `Ctrl + 0` | Trả về cỡ chữ mặc định |
+| `Ctrl + Shift + C` | Copy the selection |
+| `Ctrl + Shift + V` | Paste |
+| `Ctrl + Shift + F` | Search in the terminal |
+| `Ctrl + +` | Increase the font size |
+| `Ctrl + -` | Decrease the font size |
+| `Ctrl + 0` | Reset the font size |
 
-## Tham khảo
+## References
 
 - [Windows Terminal panes](https://learn.microsoft.com/windows/terminal/panes)
 - [Windows Terminal command-line arguments](https://learn.microsoft.com/windows/terminal/command-line-arguments)

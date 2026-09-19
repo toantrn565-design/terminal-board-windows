@@ -1,0 +1,442 @@
+﻿<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Terminal Board" Width="1040" Height="724"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        WindowStartupLocation="CenterScreen" ResizeMode="NoResize"
+        FontFamily="Segoe UI" FontSize="13" UseLayoutRounding="True" SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display">
+  <Window.Resources>
+    <!-- Theme colours. TbDeskWindow.cs replaces these at run time (Midnight Gold is the default). -->
+    <LinearGradientBrush x:Key="WindowBg" StartPoint="0,0" EndPoint="1,1">
+      <GradientStop Color="#141E4A" Offset="0"/>
+      <GradientStop Color="#090E28" Offset="1"/>
+    </LinearGradientBrush>
+    <SolidColorBrush x:Key="Card" Color="#182356"/>
+    <SolidColorBrush x:Key="Line" Color="#2C3B78"/>
+    <SolidColorBrush x:Key="LineHover" Color="#43549A"/>
+    <SolidColorBrush x:Key="Field" Color="#0E1638"/>
+    <SolidColorBrush x:Key="Field2" Color="#1B2760"/>
+    <SolidColorBrush x:Key="Hover" Color="#1F2C68"/>
+    <SolidColorBrush x:Key="Text" Color="#F6F1E4"/>
+    <SolidColorBrush x:Key="Muted" Color="#9BA6D0"/>
+    <SolidColorBrush x:Key="ChipText" Color="#C9D0EC"/>
+    <SolidColorBrush x:Key="ChipOn" Color="#232F70"/>
+    <SolidColorBrush x:Key="PreviewBg" Color="#070B20"/>
+    <SolidColorBrush x:Key="PreviewBar" Color="#0F1638"/>
+    <SolidColorBrush x:Key="AccentSolid" Color="#E7C670"/>
+    <SolidColorBrush x:Key="OnAccent" Color="#1D1503"/>
+    <SolidColorBrush x:Key="Selection" Color="#B98B2E"/>
+    <LinearGradientBrush x:Key="AccentBrush" StartPoint="0,0" EndPoint="1,1">
+      <GradientStop Color="#F6DE97" Offset="0"/>
+      <GradientStop Color="#C9973A" Offset="1"/>
+    </LinearGradientBrush>
+    <SolidColorBrush x:Key="WinText" Color="#F6F1E4"/>
+    <SolidColorBrush x:Key="WinMuted" Color="#9BA6D0"/>
+    <SolidColorBrush x:Key="WinLine" Color="#2C3B78"/>
+    <SolidColorBrush x:Key="WinHover" Color="#1F2C68"/>
+    <SolidColorBrush x:Key="ArtBrush" Color="Transparent"/>
+    <LinearGradientBrush x:Key="AccentLine" StartPoint="0,0" EndPoint="1,0">
+      <GradientStop Color="#00E7C670" Offset="0"/>
+      <GradientStop Color="#99E7C670" Offset="0.5"/>
+      <GradientStop Color="#00E7C670" Offset="1"/>
+    </LinearGradientBrush>
+
+    <Style x:Key="SectionTitle" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource Muted}"/>
+      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+    </Style>
+
+    <Style x:Key="PrimaryButton" TargetType="Button">
+      <Setter Property="Foreground" Value="{DynamicResource OnAccent}"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="FontSize" Value="15"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd" CornerRadius="12" Background="{DynamicResource AccentBrush}" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Opacity" Value="0.9"/></Trigger>
+              <Trigger Property="IsPressed" Value="True"><Setter TargetName="Bd" Property="Opacity" Value="0.75"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="GhostButton" TargetType="Button">
+      <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd" CornerRadius="12" Background="Transparent" BorderBrush="{DynamicResource Line}" BorderThickness="1" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Hover}"/>
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource LineHover}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="GhostWin" TargetType="Button">
+      <Setter Property="Foreground" Value="{DynamicResource WinText}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd" CornerRadius="12" Background="Transparent" BorderBrush="{DynamicResource WinLine}" BorderThickness="1" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource WinHover}"/>
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource WinMuted}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="StepButton" TargetType="Button">
+      <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+      <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="Width" Value="40"/>
+      <Setter Property="Height" Value="40"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd" CornerRadius="10" Background="{DynamicResource Field}" BorderBrush="{DynamicResource Line}" BorderThickness="1">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Hover}"/>
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource AccentSolid}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="WinButton" TargetType="Button">
+      <Setter Property="Foreground" Value="{DynamicResource WinMuted}"/>
+      <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+      <Setter Property="FontSize" Value="10"/>
+      <Setter Property="Width" Value="44"/>
+      <Setter Property="Height" Value="32"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd" CornerRadius="8" Background="Transparent">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource WinHover}"/>
+                <Setter Property="Foreground" Value="{DynamicResource WinText}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="Swatch" TargetType="Button">
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Margin" Value="0,0,9,0"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border Width="24" Height="24" CornerRadius="12" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="2"/>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="CardButton" TargetType="Button">
+      <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd" CornerRadius="10" Background="{DynamicResource Field}" BorderBrush="{DynamicResource Line}" BorderThickness="1" Padding="12,8">
+              <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Hover}"/>
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource AccentSolid}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="Chip" TargetType="RadioButton">
+      <Setter Property="Foreground" Value="{DynamicResource ChipText}"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Margin" Value="0,0,5,6"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="RadioButton">
+            <Border x:Name="Bd" CornerRadius="9" Padding="8,6" Background="{DynamicResource Field}" BorderBrush="{DynamicResource Line}" BorderThickness="1">
+              <StackPanel Orientation="Horizontal">
+                <Ellipse Width="8" Height="8" Fill="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                <ContentPresenter VerticalAlignment="Center"/>
+              </StackPanel>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Hover}"/>
+              </Trigger>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ChipOn}"/>
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"/>
+                <Setter Property="Foreground" Value="#FFFFFF"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="FieldBox" TargetType="TextBox">
+      <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+      <Setter Property="CaretBrush" Value="{DynamicResource Text}"/>
+      <Setter Property="SelectionBrush" Value="{DynamicResource Selection}"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="TextBox">
+            <Border x:Name="Bd" CornerRadius="10" Background="{DynamicResource Field}" BorderBrush="{DynamicResource Line}" BorderThickness="1" Padding="12,0">
+              <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource AccentSolid}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style TargetType="ScrollBar">
+      <Setter Property="Width" Value="8"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ScrollBar">
+            <Grid Background="Transparent">
+              <Track x:Name="PART_Track" IsDirectionReversed="True">
+                <Track.DecreaseRepeatButton>
+                  <RepeatButton Command="ScrollBar.PageUpCommand" Opacity="0" Focusable="False"/>
+                </Track.DecreaseRepeatButton>
+                <Track.Thumb>
+                  <Thumb>
+                    <Thumb.Template>
+                      <ControlTemplate TargetType="Thumb">
+                        <Border Background="{DynamicResource LineHover}" CornerRadius="4" Margin="1,0"/>
+                      </ControlTemplate>
+                    </Thumb.Template>
+                  </Thumb>
+                </Track.Thumb>
+                <Track.IncreaseRepeatButton>
+                  <RepeatButton Command="ScrollBar.PageDownCommand" Opacity="0" Focusable="False"/>
+                </Track.IncreaseRepeatButton>
+              </Track>
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </Window.Resources>
+
+  <Border Margin="14" CornerRadius="18" Background="{DynamicResource WindowBg}" BorderBrush="{DynamicResource Line}" BorderThickness="1">
+    <Border.Effect>
+      <DropShadowEffect BlurRadius="28" ShadowDepth="0" Opacity="0.6" Color="#000000"/>
+    </Border.Effect>
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="68"/>
+        <RowDefinition Height="*"/>
+        <RowDefinition Height="92"/>
+      </Grid.RowDefinitions>
+
+      <!-- Background layers: the user's picture (optional), then the theme artwork -->
+      <Rectangle x:Name="BgImage" Grid.Row="0" Grid.RowSpan="3" RadiusX="17" RadiusY="17" Opacity="0.30" IsHitTestVisible="False"/>
+      <Rectangle x:Name="ArtLayer" Grid.Row="0" Grid.RowSpan="3" RadiusX="17" RadiusY="17" Fill="{DynamicResource ArtBrush}" IsHitTestVisible="False"/>
+
+      <!-- Header -->
+      <Grid x:Name="Header" Grid.Row="0" Background="Transparent" Margin="26,0,14,0">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <Border Width="38" Height="38" CornerRadius="10" Background="{DynamicResource Field}" BorderBrush="{DynamicResource LineHover}" BorderThickness="1" Margin="0,0,14,0">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+              <Rectangle Width="3" Height="18" Fill="{DynamicResource AccentSolid}" RadiusX="1.5" RadiusY="1.5" Margin="0,0,3,0"/>
+              <Rectangle Width="3" Height="18" Fill="{DynamicResource AccentSolid}" RadiusX="1.5" RadiusY="1.5" Margin="0,0,3,0"/>
+              <Rectangle Width="3" Height="18" Fill="{DynamicResource AccentSolid}" RadiusX="1.5" RadiusY="1.5" Margin="0,0,3,0"/>
+              <Rectangle Width="3" Height="18" Fill="{DynamicResource AccentSolid}" RadiusX="1.5" RadiusY="1.5" Margin="0,0,3,0"/>
+              <Rectangle Width="3" Height="18" Fill="{DynamicResource AccentSolid}" RadiusX="1.5" RadiusY="1.5"/>
+            </StackPanel>
+          </Border>
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="Terminal Board" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource WinText}"/>
+            <TextBlock Text="Workspace for AI agents" FontSize="12" Foreground="{DynamicResource WinMuted}" Margin="0,1,0,0"/>
+          </StackPanel>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+          <StackPanel x:Name="ThemeHost" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0"/>
+          <Button x:Name="BtnImage" Style="{StaticResource WinButton}" Content="&#xEB9F;" ToolTip="Choose your own background picture (right-click to remove it)"/>
+          <Button x:Name="BtnMin" Style="{StaticResource WinButton}" Content="&#xE921;"/>
+          <Button x:Name="BtnClose" Style="{StaticResource WinButton}" Content="&#xE8BB;"/>
+        </StackPanel>
+      </Grid>
+
+      <!-- A fine accent line under the header -->
+      <Rectangle Grid.Row="0" Height="1" VerticalAlignment="Bottom" Margin="26,0,26,0" Fill="{DynamicResource AccentLine}"/>
+
+      <!-- Body -->
+      <Grid Grid.Row="1" Margin="26,0,26,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="1.2*"/>
+          <ColumnDefinition Width="20"/>
+          <ColumnDefinition Width="1*"/>
+        </Grid.ColumnDefinitions>
+
+        <Grid Grid.Column="0">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+          </Grid.RowDefinitions>
+
+          <Border Grid.Row="0" CornerRadius="14" Background="{DynamicResource Card}" BorderBrush="{DynamicResource Line}" BorderThickness="1" Padding="18" Margin="0,0,0,14">
+            <StackPanel>
+              <TextBlock Text="WORKING FOLDER" Style="{StaticResource SectionTitle}"/>
+              <Grid Margin="0,10,0,0">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="10"/>
+                  <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="TxtFolder" Style="{StaticResource FieldBox}" Height="42" VerticalContentAlignment="Center"/>
+                <Button x:Name="BtnBrowse" Grid.Column="2" Style="{StaticResource GhostButton}" Content="Browse" Height="42" Padding="18,0"/>
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <Border Grid.Row="1" CornerRadius="14" Background="{DynamicResource Card}" BorderBrush="{DynamicResource Line}" BorderThickness="1" Padding="18" Margin="0,0,0,14">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <StackPanel>
+                <TextBlock Text="NUMBER OF PANES" Style="{StaticResource SectionTitle}"/>
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                  <Button x:Name="BtnMinus" Style="{StaticResource StepButton}" Content="&#xE738;"/>
+                  <TextBlock x:Name="TxtCount" Width="58" TextAlignment="Center" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text}" VerticalAlignment="Center"/>
+                  <Button x:Name="BtnPlus" Style="{StaticResource StepButton}" Content="&#xE710;"/>
+                </StackPanel>
+              </StackPanel>
+              <StackPanel Grid.Column="1">
+                <TextBlock Text="LAYOUT" Style="{StaticResource SectionTitle}"/>
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                  <RadioButton x:Name="ChipCols" GroupName="layout" Style="{StaticResource Chip}" Content="Side by side" Tag="#45E8AC" Padding="4" Margin="0,0,8,0"/>
+                  <RadioButton x:Name="ChipRows" GroupName="layout" Style="{StaticResource Chip}" Content="Stacked" Tag="#45E8AC" Margin="0"/>
+                </StackPanel>
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <Border Grid.Row="2" CornerRadius="14" Background="{DynamicResource Card}" BorderBrush="{DynamicResource Line}" BorderThickness="1" Padding="18,16,10,10">
+            <Grid>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+              </Grid.RowDefinitions>
+              <TextBlock Text="WHAT RUNS IN EACH PANE?" Style="{StaticResource SectionTitle}" Margin="0,0,8,10"/>
+              <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel x:Name="RowsHost" Margin="0,0,10,0"/>
+              </ScrollViewer>
+            </Grid>
+          </Border>
+        </Grid>
+
+        <Grid Grid.Column="2">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+
+          <Border Grid.Row="0" CornerRadius="14" Background="{DynamicResource Card}" BorderBrush="{DynamicResource Line}" BorderThickness="1" Padding="18" Margin="0,0,0,14">
+            <Grid>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+              </Grid.RowDefinitions>
+              <DockPanel>
+                <TextBlock x:Name="PreviewInfo" DockPanel.Dock="Right" Foreground="{DynamicResource Muted}" FontSize="12"/>
+                <TextBlock Text="PREVIEW" Style="{StaticResource SectionTitle}"/>
+              </DockPanel>
+              <Border Grid.Row="1" Margin="0,12,0,0" CornerRadius="10" Background="{DynamicResource PreviewBg}" BorderBrush="{DynamicResource Line}" BorderThickness="1">
+                <Grid>
+                  <Grid.RowDefinitions>
+                    <RowDefinition Height="28"/>
+                    <RowDefinition Height="*"/>
+                  </Grid.RowDefinitions>
+                  <Border CornerRadius="10,10,0,0" Background="{DynamicResource PreviewBar}">
+                    <StackPanel Orientation="Horizontal" Margin="12,0" VerticalAlignment="Center">
+                      <Ellipse Width="8" Height="8" Fill="#FF5F57" Margin="0,0,5,0"/>
+                      <Ellipse Width="8" Height="8" Fill="#FEBC2E" Margin="0,0,5,0"/>
+                      <Ellipse Width="8" Height="8" Fill="#28C840" Margin="0,0,12,0"/>
+                      <TextBlock Text="Terminal Board" FontSize="11" Foreground="{DynamicResource Muted}"/>
+                    </StackPanel>
+                  </Border>
+                  <UniformGrid x:Name="PreviewGrid" Grid.Row="1" Margin="6"/>
+                </Grid>
+              </Border>
+            </Grid>
+          </Border>
+
+          <Border Grid.Row="1" CornerRadius="14" Background="{DynamicResource Card}" BorderBrush="{DynamicResource Line}" BorderThickness="1" Padding="18,16,18,8">
+            <StackPanel>
+              <TextBlock Text="QUICK PRESETS" Style="{StaticResource SectionTitle}"/>
+              <WrapPanel x:Name="PresetsHost" Margin="0,10,0,0"/>
+            </StackPanel>
+          </Border>
+        </Grid>
+      </Grid>
+
+      <!-- Footer -->
+      <Grid Grid.Row="2" Margin="26,0,26,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="{DynamicResource WinMuted}" TextWrapping="Wrap" Margin="0,0,24,0"/>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+          <Button x:Name="BtnSave" Style="{StaticResource GhostWin}" Content="Save settings" Height="50" Padding="24,0" Margin="0,0,12,0"/>
+          <Button x:Name="BtnOpen" Style="{StaticResource PrimaryButton}" Content="Open workspace" Height="50" Padding="34,0" IsDefault="True"/>
+        </StackPanel>
+      </Grid>
+    </Grid>
+  </Border>
+</Window>

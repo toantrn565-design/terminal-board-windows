@@ -31,7 +31,9 @@ $rootFiles = @(
 $srcFiles = @(
     'TerminalBoard.psm1',
     'Save-TbClipboardImageWorker.ps1',
-    'Invoke-TbImageHotkey.ps1'
+    'TbClipboardHelper.cs',
+    'TbDeskWindow.cs',
+    'TbDesk.xaml'
 )
 
 foreach ($file in $rootFiles) {
@@ -43,7 +45,11 @@ foreach ($file in $srcFiles) {
     Copy-Item -LiteralPath (Join-Path $sourceSrcDirectory $file) -Destination $stagingSrcDirectory -Force
 }
 
+# The kit ships its own icon so a shortcut to setup.cmd can carry it.
+Import-Module (Join-Path $PSScriptRoot 'src\TerminalBoard.psm1') -Force
+New-TbIcon -Path (Join-Path $stagingDirectory 'TerminalBoard.ico')
+
 Compress-Archive -Path (Join-Path $stagingDirectory '*') -DestinationPath $zipPath -Force
 
-Write-Host "Da dong goi: $stagingDirectory"
-Write-Host "Da nen: $zipPath"
+Write-Host "Packaged: $stagingDirectory"
+Write-Host "Zipped: $zipPath"
