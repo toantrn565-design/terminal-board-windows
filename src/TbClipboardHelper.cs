@@ -2,9 +2,11 @@
 //
 // Runs in the background with a tray icon. When a plain picture lands on the
 // clipboard (Win+Shift+S, PrintScreen, Paint...) it saves the picture as a PNG
-// and replaces the clipboard with ONE package holding both the picture and the
-// file path as text. Ctrl+V in a terminal then pastes the path (terminals only
-// paste text), while Ctrl+V in Word, Paint or a chat app still pastes the picture.
+// and keeps the clipboard as the plain picture. A keyboard hook watches Ctrl+V:
+// when the window in front is a terminal (terminals only paste text) the
+// clipboard is switched to picture + file path just before the paste, so the
+// path lands in the terminal; in any other app (browser, chat, Word, Paint) the
+// clipboard stays the plain picture, so the picture itself is pasted.
 //
 // install.ps1 compiles this file with the csc.exe that ships with Windows, so
 // keep it to C# 5 (no string interpolation, no "?.", no expression-bodied members).
@@ -200,6 +202,44 @@ namespace TerminalBoard
 
         [DllImport("user32.dll", SetLastError = true)]
         public static extern bool RemoveClipboardFormatListener(IntPtr hwnd);
+
+        public delegate IntPtr HookProc(int code, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern IntPtr SetWindowsHookEx(int hookId, HookProc proc, IntPtr module, uint threadId);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern bool UnhookWindowsHookEx(IntPtr hook);
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr CallNextHookEx(IntPtr hook, int code, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll")]
+        public static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
+
+        [DllImport("user32.dll")]
+        public static extern short GetAsyncKeyState(int key);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+        public static extern IntPtr GetModuleHandle(string name);
+    }
+
+    // Names of programs whose window only accepts text on paste.
+    public static class TerminalApps
+    {
+        static readonly string[] Names =
+        {
+            "windowsterminal", "wt", "openconsole", "conhost", "powershell", "pwsh", "cmd",
+            "wezterm-gui", "alacritty", "mintty", "conemu", "conemu64", "kitty", "hyper"
+        };
+
+        public static bool IsTerminalProcess(string processName)
+        {
+            return processName != null && Array.IndexOf(Names, processName.ToLowerInvariant()) >= 0;
+        }
     }
 
     // A message-only window that Windows notifies whenever the clipboard changes.
@@ -253,6 +293,11 @@ namespace TerminalBoard
         readonly NotifyIcon tray = new NotifyIcon();
         readonly ToolStripMenuItem pauseItem;
         uint ownSequence;   // clipboard sequence number right after our own write
+        string lastPath;    // newest picture saved by this helper
+        uint knownSequence; // clipboard sequence number at which the clipboard is still that picture
+        bool hasText;       // the clipboard currently carries the path text as well
+        readonly Native.HookProc hookProc;
+        IntPtr hook = IntPtr.Zero;
         int retries;
         bool paused;
 
@@ -323,6 +368,73 @@ namespace TerminalBoard
                 debounce.Interval = 150;
                 debounce.Start();
             };
+
+            hookProc = OnKey;
+            hook = Native.SetWindowsHookEx(13, hookProc, Native.GetModuleHandle(null), 0);
+            if (hook == IntPtr.Zero)
+            {
+                Log("keyboard hook failed, Ctrl+V in a terminal will not get the path");
+            }
+        }
+
+        // Ctrl+V (or Ctrl+Shift+V): make the clipboard fit the window that is about to receive it.
+        IntPtr OnKey(int code, IntPtr wParam, IntPtr lParam)
+        {
+            try
+            {
+                int message = wParam.ToInt32();
+                if (code >= 0 && !paused && (message == 0x0100 || message == 0x0104)
+                    && Marshal.ReadInt32(lParam) == 0x56
+                    && (Native.GetAsyncKeyState(0x11) & 0x8000) != 0
+                    && (Native.GetAsyncKeyState(0x12) & 0x8000) == 0)
+                {
+                    PrepareClipboardForPaste();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log("paste hook error: " + ex.Message);
+            }
+            return Native.CallNextHookEx(hook, code, wParam, lParam);
+        }
+
+        void PrepareClipboardForPaste()
+        {
+            if (lastPath == null || Native.GetClipboardSequenceNumber() != knownSequence)
+            {
+                return;     // the clipboard is not our picture any more
+            }
+
+            uint processId;
+            Native.GetWindowThreadProcessId(Native.GetForegroundWindow(), out processId);
+            string name = null;
+            try
+            {
+                name = Process.GetProcessById((int)processId).ProcessName;
+            }
+            catch (Exception)
+            {
+            }
+
+            bool wantText = TerminalApps.IsTerminalProcess(name);
+            if (wantText == hasText || !File.Exists(lastPath))
+            {
+                return;
+            }
+
+            using (Image image = Image.FromFile(lastPath))
+            {
+                DataObject data = new DataObject();
+                data.SetImage(image);
+                if (wantText)
+                {
+                    data.SetText(ImageStore.ToClipboardText(lastPath));
+                }
+                Clipboard.SetDataObject(data, true, 10, 20);
+            }
+            ownSequence = Native.GetClipboardSequenceNumber();
+            knownSequence = ownSequence;
+            hasText = wantText;
         }
 
         void OnDebounceTick(object sender, EventArgs e)
@@ -401,11 +513,10 @@ namespace TerminalBoard
                     return true;
                 }
 
-                DataObject data = new DataObject();
-                data.SetImage(image);
-                data.SetText(ImageStore.ToClipboardText(path));
-                Clipboard.SetDataObject(data, true, 10, 50);
-                ownSequence = Native.GetClipboardSequenceNumber();
+                // The clipboard stays the plain picture; the paste hook adds the path for terminals.
+                lastPath = path;
+                knownSequence = sequence;
+                hasText = false;
 
                 Log("saved " + path + " (" + image.Width + "x" + image.Height + ")");
                 SetTrayText("Terminal Board: latest screenshot ready (Ctrl+V)");
@@ -513,6 +624,11 @@ namespace TerminalBoard
         {
             if (disposing)
             {
+                if (hook != IntPtr.Zero)
+                {
+                    Native.UnhookWindowsHookEx(hook);
+                    hook = IntPtr.Zero;
+                }
                 debounce.Dispose();
                 exitPoll.Dispose();
                 window.Close();

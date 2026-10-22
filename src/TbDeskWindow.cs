@@ -79,6 +79,16 @@ namespace TerminalBoard
             return null;
         }
 
+        // With a name the title is "<number> - <name>"; otherwise the same rule as Get-TbPaneTitle in TerminalBoard.psm1.
+        public static string Title(string command, int number, string name)
+        {
+            if (!string.IsNullOrEmpty(name))
+            {
+                return number + " - " + (name.Length > 40 ? name.Substring(0, 40) : name);
+            }
+            return Title(command, number);
+        }
+
         // Same rule as Get-TbPaneTitle in TerminalBoard.psm1.
         public static string Title(string command, int number)
         {
@@ -99,6 +109,7 @@ namespace TerminalBoard
         public int Count;
         public string Layout;
         public string[] Panes;
+        public string[] Names;      // optional display name per pane (agent name), "" when not set
         public string Theme;
         public string Background;   // file name of the user's picture inside the data folder, or null
     }
@@ -244,9 +255,11 @@ namespace TerminalBoard
             settings.Layout = "columns";
             settings.Theme = Themes.DefaultKey;
             settings.Panes = new string[MaxPanes];
+            settings.Names = new string[MaxPanes];
             for (int i = 0; i < MaxPanes; i++)
             {
                 settings.Panes[i] = PlainShell;
+                settings.Names[i] = string.Empty;
             }
             return settings;
         }
@@ -303,6 +316,20 @@ namespace TerminalBoard
                     settings.Background = (string)value;
                 }
 
+                IEnumerable names = saved.TryGetValue("names", out value) ? value as IEnumerable : null;
+                if (names != null && !(value is string))
+                {
+                    int nameIndex = 0;
+                    foreach (object item in names)
+                    {
+                        if (nameIndex < MaxPanes && item != null)
+                        {
+                            settings.Names[nameIndex] = Convert.ToString(item).Trim();
+                        }
+                        nameIndex++;
+                    }
+                }
+
                 IEnumerable panes = saved.TryGetValue("panes", out value) ? value as IEnumerable : null;
                 if (panes != null && !(value is string))
                 {
@@ -339,6 +366,7 @@ namespace TerminalBoard
                 data["background"] = settings.Background;
             }
             data["panes"] = settings.Panes;
+            data["names"] = settings.Names ?? new string[MaxPanes];
             // UTF-8 with a BOM so Windows PowerShell (which `tb desk` uses) reads non-ASCII folder names.
             File.WriteAllText(PathFor(dataDirectory), new JavaScriptSerializer().Serialize(data), new UTF8Encoding(true));
         }
@@ -374,12 +402,36 @@ namespace TerminalBoard
             return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
         }
 
-        static void AddShell(List<string> tokens, string command)
+        // A named pane prints its name in a coloured banner first; Claude Code also gets --name.
+        static string WithName(string command, string name)
+        {
+            if (string.IsNullOrEmpty(name))
+            {
+                return command;
+            }
+
+            string quoted = name.Replace("'", "''");
+            string banner = "Write-Host '=== " + quoted + " ===' -ForegroundColor Yellow";
+            if (command == DeskStore.PlainShell)
+            {
+                return banner;
+            }
+            if (string.Equals(command, "claude", StringComparison.OrdinalIgnoreCase))
+            {
+                // 17/10: every Claude pane is also reachable from the phone (Claude app, Remote Control). TB_REMOTE=0 turns it off.
+                bool phone = Environment.GetEnvironmentVariable("TB_REMOTE") != "0";
+                command = "claude --name '" + quoted + "'" + (phone ? " --remote-control '" + quoted + "'" : "");
+            }
+            return banner + "; " + command;
+        }
+
+        static void AddShell(List<string> tokens, string command, string name)
         {
             if (string.IsNullOrEmpty(command))
             {
                 command = DeskStore.PlainShell;
             }
+            command = WithName(command, name);
 
             tokens.Add("--");
             tokens.Add(ShellExe());
@@ -399,17 +451,22 @@ namespace TerminalBoard
             return ((remaining - 1) / (double)remaining).ToString("0.######", CultureInfo.InvariantCulture);
         }
 
+        static string NameOf(DeskSettings settings, int paneNumber)
+        {
+            return settings.Names != null && paneNumber <= settings.Names.Length ? settings.Names[paneNumber - 1] : string.Empty;
+        }
+
         static void AddFirstPane(List<string> tokens, DeskSettings settings, string windowName)
         {
-            tokens.AddRange(new string[] { "-w", windowName, "-M", "new-tab", "-d", settings.Folder, "--title", Agents.Title(settings.Panes[0], 1), "--suppressApplicationTitle" });
-            AddShell(tokens, settings.Panes[0]);
+            tokens.AddRange(new string[] { "-w", windowName, "-M", "new-tab", "-d", settings.Folder, "--title", Agents.Title(settings.Panes[0], 1, NameOf(settings, 1)), "--suppressApplicationTitle" });
+            AddShell(tokens, settings.Panes[0], NameOf(settings, 1));
         }
 
         static void AddSplit(List<string> tokens, DeskSettings settings, int paneNumber)
         {
             string orientation = settings.Layout == "rows" ? "-H" : "-V";
-            tokens.AddRange(new string[] { "split-pane", orientation, "-s", SplitSize(settings.Count, paneNumber), "-d", settings.Folder, "--title", Agents.Title(settings.Panes[paneNumber - 1], paneNumber), "--suppressApplicationTitle" });
-            AddShell(tokens, settings.Panes[paneNumber - 1]);
+            tokens.AddRange(new string[] { "split-pane", orientation, "-s", SplitSize(settings.Count, paneNumber), "-d", settings.Folder, "--title", Agents.Title(settings.Panes[paneNumber - 1], paneNumber, NameOf(settings, paneNumber)), "--suppressApplicationTitle" });
+            AddShell(tokens, settings.Panes[paneNumber - 1], NameOf(settings, paneNumber));
         }
 
         // The command in the same one-line form as `tb desk --dry-run`.
@@ -534,6 +591,62 @@ namespace TerminalBoard
         }
     }
 
+    // Closes chosen panes of the Windows Terminal window used last. Windows Terminal has no command
+    // to close a pane, so each one is focused by its number (focus-pane, creation order, stays the
+    // same after other panes close) and closed with its own Ctrl+Shift+W.
+    internal static class PaneCloser
+    {
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        static extern IntPtr GetForegroundWindow();
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        static extern int GetClassName(IntPtr window, StringBuilder buffer, int maxCount);
+
+        static bool TerminalInFront()
+        {
+            StringBuilder name = new StringBuilder(128);
+            GetClassName(GetForegroundWindow(), name, name.Capacity);
+            return name.ToString() == "CASCADIA_HOSTING_WINDOW_CLASS";
+        }
+
+        // paneNumbers are 1-based, as in the tab titles. Returns how many panes were closed.
+        public static int Close(List<int> paneNumbers)
+        {
+            paneNumbers.Sort();
+            paneNumbers.Reverse();   // highest first
+            int closed = 0;
+            foreach (int number in paneNumbers)
+            {
+                ProcessStartInfo info = new ProcessStartInfo("wt.exe", "-w 0 focus-pane -t " + (number - 1).ToString(CultureInfo.InvariantCulture));
+                info.UseShellExecute = false;
+                info.CreateNoWindow = true;
+                try
+                {
+                    using (Process process = Process.Start(info))
+                    {
+                        process.WaitForExit(5000);
+                    }
+                }
+                catch (System.ComponentModel.Win32Exception)
+                {
+                    throw new InvalidOperationException("Windows Terminal (wt.exe) was not found.");
+                }
+
+                Thread.Sleep(300);
+                if (!TerminalInFront())
+                {
+                    // Never send the close key to some other program.
+                    throw new InvalidOperationException("Windows Terminal did not come to the front, so nothing more was closed (" + closed + " closed).");
+                }
+
+                System.Windows.Forms.SendKeys.SendWait("^+w");
+                closed++;
+                Thread.Sleep(400);
+            }
+            return closed;
+        }
+    }
+
     internal sealed class Preset
     {
         public readonly string Name;
@@ -564,6 +677,7 @@ namespace TerminalBoard
         {
             public Grid Line;
             public TextBox Custom;
+            public TextBox NameBox;
             public List<RadioButton> Chips = new List<RadioButton>();
             public List<string> ChipKinds = new List<string>();
         }
@@ -592,6 +706,7 @@ namespace TerminalBoard
         string themeKey = Themes.DefaultKey;
         readonly string[] kinds = new string[DeskStore.MaxPanes];
         readonly string[] customs = new string[DeskStore.MaxPanes];
+        readonly string[] names = new string[DeskStore.MaxPanes];
         int count = 5;
         string layout = "columns";
         bool syncing;
@@ -677,6 +792,7 @@ namespace TerminalBoard
             backgroundFile = settings.Background;
             for (int i = 0; i < DeskStore.MaxPanes; i++)
             {
+                names[i] = settings.Names != null ? (settings.Names[i] ?? string.Empty) : string.Empty;
                 AgentInfo known = Agents.ByCommand(settings.Panes[i]);
                 if (known != null)
                 {
@@ -720,6 +836,33 @@ namespace TerminalBoard
                 badge.Child = badgeText;
 
                 StackPanel right = new StackPanel();
+
+                // The agent's name: shown in the tab title and as a banner at the top of the pane.
+                Grid nameLine = new Grid();
+                nameLine.Margin = new Thickness(0, 0, 0, 6);
+                nameLine.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                nameLine.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                TextBlock nameLabel = new TextBlock();
+                nameLabel.Text = "Name";
+                nameLabel.VerticalAlignment = VerticalAlignment.Center;
+                nameLabel.Margin = new Thickness(2, 0, 10, 0);
+                nameLabel.SetResourceReference(TextBlock.ForegroundProperty, "Muted");
+                row.NameBox = new TextBox();
+                row.NameBox.Style = (Style)window.FindResource("FieldBox");
+                row.NameBox.Height = 34;
+                row.NameBox.MaxLength = 40;
+                row.NameBox.VerticalContentAlignment = VerticalAlignment.Center;
+                row.NameBox.ToolTip = "Who works in this pane, for example: Phuong Thao - Whiteboard. Shown in the tab title and at the top of the pane.";
+                row.NameBox.TextChanged += delegate
+                {
+                    names[index] = row.NameBox.Text;
+                    UpdatePreview();
+                };
+                Grid.SetColumn(row.NameBox, 1);
+                nameLine.Children.Add(nameLabel);
+                nameLine.Children.Add(row.NameBox);
+                right.Children.Add(nameLine);
+
                 WrapPanel chips = new WrapPanel();
                 row.Custom = new TextBox();
                 row.Custom.Style = (Style)window.FindResource("FieldBox");
@@ -835,6 +978,7 @@ namespace TerminalBoard
 
             ((Button)window.FindName("BtnBrowse")).Click += delegate { Browse(); };
             btnSave.Click += delegate { Save(); };
+            ((Button)window.FindName("BtnClosePanes")).Click += delegate { ShowClosePanes(); };
             btnImage.Click += delegate { ChooseBackground(); };
             btnImage.MouseRightButtonUp += delegate { ClearBackground(); };
             btnOpen.Click += delegate { OpenBoard(); };
@@ -882,6 +1026,7 @@ namespace TerminalBoard
                         rows[i].Chips[c].IsChecked = rows[i].ChipKinds[c] == kinds[i];
                     }
                     rows[i].Custom.Text = customs[i];
+                    rows[i].NameBox.Text = names[i] ?? string.Empty;
                 }
                 chipCols.IsChecked = layout != "rows";
                 chipRows.IsChecked = layout == "rows";
@@ -929,6 +1074,11 @@ namespace TerminalBoard
                 {
                     string typed = (customs[i] ?? string.Empty).Trim();
                     label = typed.Length > 0 ? typed : "Custom";
+                }
+                string agentName = (names[i] ?? string.Empty).Trim();
+                if (agentName.Length > 0)
+                {
+                    label = agentName;
                 }
 
                 Border tile = new Border();
@@ -1286,8 +1436,10 @@ namespace TerminalBoard
             settings.Theme = themeKey;
             settings.Background = backgroundFile;
             settings.Panes = new string[DeskStore.MaxPanes];
+            settings.Names = new string[DeskStore.MaxPanes];
             for (int i = 0; i < DeskStore.MaxPanes; i++)
             {
+                settings.Names[i] = (names[i] ?? string.Empty).Trim();
                 if (kinds[i] == "custom")
                 {
                     string typed = (customs[i] ?? string.Empty).Trim();
@@ -1318,6 +1470,167 @@ namespace TerminalBoard
                 {
                     txtFolder.Text = dialog.SelectedPath;
                 }
+            }
+        }
+
+        // "Close panes": tick the panes that are no longer needed and close them in the open board window.
+        void ShowClosePanes()
+        {
+            DeskSettings saved = DeskStore.Load(dataDirectory);
+            Brush back = window.TryFindResource("PreviewBg") as Brush ?? new SolidColorBrush(Color.FromRgb(20, 24, 36));
+            Brush fore = window.TryFindResource("Text") as Brush ?? Brushes.White;
+            Brush muted = window.TryFindResource("Muted") as Brush ?? Brushes.Gray;
+
+            Window dialog = new Window();
+            dialog.Title = "Close panes";
+            dialog.Owner = window;
+            dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            dialog.SizeToContent = SizeToContent.Height;
+            dialog.Width = 560;
+            dialog.ResizeMode = ResizeMode.NoResize;
+            dialog.Background = back;
+            dialog.Foreground = fore;
+
+            StackPanel root = new StackPanel();
+            root.Margin = new Thickness(22);
+            dialog.Content = root;
+
+            TextBlock intro = new TextBlock();
+            intro.TextWrapping = TextWrapping.Wrap;
+            intro.Foreground = muted;
+            intro.Text = "Tick the panes you no longer need. They are closed in the Windows Terminal window you used last. "
+                + "A closed pane ends the session running in it, and the other panes keep their numbers.";
+            root.Children.Add(intro);
+
+            StackPanel countLine = new StackPanel();
+            countLine.Orientation = Orientation.Horizontal;
+            countLine.Margin = new Thickness(0, 16, 0, 10);
+            TextBlock countLabel = new TextBlock();
+            countLabel.Text = "Panes open now:";
+            countLabel.VerticalAlignment = VerticalAlignment.Center;
+            countLabel.Margin = new Thickness(0, 0, 10, 0);
+            ComboBox countBox = new ComboBox();
+            countBox.Width = 70;
+            for (int n = 2; n <= 12; n++)
+            {
+                countBox.Items.Add(n);
+            }
+            countBox.SelectedItem = Math.Max(2, Math.Min(12, saved.Count));
+            countLine.Children.Add(countLabel);
+            countLine.Children.Add(countBox);
+            root.Children.Add(countLine);
+
+            WrapPanel boxes = new WrapPanel();
+            List<CheckBox> checks = new List<CheckBox>();
+            for (int n = 1; n <= 12; n++)
+            {
+                CheckBox check = new CheckBox();
+                string kind = n <= saved.Panes.Length ? saved.Panes[n - 1] : DeskStore.PlainShell;
+                string paneName = n <= saved.Names.Length ? saved.Names[n - 1] : string.Empty;
+                check.Content = Agents.Title(kind, n, paneName);
+                check.Foreground = fore;
+                check.Width = 250;
+                check.Margin = new Thickness(0, 4, 0, 4);
+                checks.Add(check);
+                boxes.Children.Add(check);
+            }
+            root.Children.Add(boxes);
+
+            TextBlock note = new TextBlock();
+            note.Foreground = muted;
+            note.TextWrapping = TextWrapping.Wrap;
+            note.Margin = new Thickness(0, 12, 0, 0);
+            root.Children.Add(note);
+
+            StackPanel buttons = new StackPanel();
+            buttons.Orientation = Orientation.Horizontal;
+            buttons.HorizontalAlignment = HorizontalAlignment.Right;
+            buttons.Margin = new Thickness(0, 18, 0, 0);
+            Button cancel = new Button();
+            cancel.Content = "Cancel";
+            cancel.Padding = new Thickness(20, 8, 20, 8);
+            cancel.Margin = new Thickness(0, 0, 10, 0);
+            Button go = new Button();
+            go.Content = "Close selected panes";
+            go.Padding = new Thickness(20, 8, 20, 8);
+            go.IsEnabled = false;
+            buttons.Children.Add(cancel);
+            buttons.Children.Add(go);
+            root.Children.Add(buttons);
+
+            Action refresh = delegate
+            {
+                int open = (int)countBox.SelectedItem;
+                int ticked = 0;
+                for (int n = 1; n <= 12; n++)
+                {
+                    CheckBox check = checks[n - 1];
+                    check.IsEnabled = n <= open;
+                    if (!check.IsEnabled)
+                    {
+                        check.IsChecked = false;
+                    }
+                    if (check.IsChecked == true)
+                    {
+                        ticked++;
+                    }
+                }
+                bool allTicked = ticked >= open;
+                go.IsEnabled = ticked > 0 && !allTicked;
+                note.Text = allTicked
+                    ? "At least one pane must stay open."
+                    : (ticked == 0 ? "Set \"Panes open now\" to the number of panes you see, so the numbers match." : ticked + " pane(s) will be closed.");
+            };
+            countBox.SelectionChanged += delegate { refresh(); };
+            foreach (CheckBox check in checks)
+            {
+                check.Click += delegate { refresh(); };
+            }
+            refresh();
+
+            List<int> chosen = null;
+            cancel.Click += delegate { dialog.Close(); };
+            go.Click += delegate
+            {
+                chosen = new List<int>();
+                for (int n = 1; n <= 12; n++)
+                {
+                    if (checks[n - 1].IsChecked == true)
+                    {
+                        chosen.Add(n);
+                    }
+                }
+                dialog.Close();
+            };
+            dialog.ShowDialog();
+
+            if (chosen == null || chosen.Count == 0)
+            {
+                return;
+            }
+
+            List<string> names = new List<string>();
+            foreach (int n in chosen)
+            {
+                names.Add(n.ToString(CultureInfo.InvariantCulture));
+            }
+            string list = string.Join(", ", names.ToArray());
+            MessageBoxResult answer = MessageBox.Show(window,
+                "Close pane " + list + " in the Windows Terminal window you used last?\n\nThe sessions running in them will end.",
+                "Close panes", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+            if (answer != MessageBoxResult.OK)
+            {
+                return;
+            }
+
+            try
+            {
+                int closed = PaneCloser.Close(chosen);
+                SetStatus("Closed " + closed + " pane(s): " + list + ".", false);
+            }
+            catch (Exception ex)
+            {
+                SetStatus(ex.Message, true);
             }
         }
 

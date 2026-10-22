@@ -1,7 +1,12 @@
 [CmdletBinding()]
-param()
+param(
+    # Keep the window open until a key is pressed (used when started from Windows' "Installed apps" list).
+    [switch]$Pause
+)
 
 $ErrorActionPreference = 'Stop'
+# This script may be running from inside the folder it deletes, so leave that folder first.
+Set-Location -LiteralPath ([System.IO.Path]::GetTempPath())
 $windowsAppsDirectory = Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps'
 $installDirectory = Join-Path $windowsAppsDirectory 'TerminalBoard'
 $legacyInstallDirectory = Join-Path $env:LOCALAPPDATA 'TerminalBoard\bin'
@@ -67,4 +72,10 @@ if (Test-Path -LiteralPath $desktopBoardShortcut) {
     }
 }
 
-Write-Host 'Terminal Board was removed. Open a new terminal to refresh PATH.'
+Remove-Item -LiteralPath 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\TerminalBoard' -Recurse -Force -ErrorAction SilentlyContinue
+
+Write-Host 'Terminal Board was removed, including its settings and saved screenshots. Open a new terminal to refresh PATH.'
+if ($Pause) {
+    Write-Host 'Press any key to close this window.'
+    $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+}

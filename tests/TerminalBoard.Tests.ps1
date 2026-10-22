@@ -401,6 +401,26 @@ try {
             Assert-Equal ($fromExe -ceq $fromScript) $true "The settings screen and tb desk must build the same board command ($($parityCase.Count) panes, $($parityCase.Layout))."
         }
 
+        # Phone control (17/10): a named Claude pane is started with --remote-control so it shows up in the Claude phone app;
+        # TB_REMOTE=0 turns that off. Only the settings screen names panes, so this is checked on the exe output alone.
+        $phonePanes = @('claude') + @(1..11 | ForEach-Object { '@shell' })
+        $phoneNames = @('Bao Ngoc QA') + @(1..11 | ForEach-Object { '' })
+        $phoneSettingsPath = Join-Path $tempAppDataDirectory 'phone.json'
+        $phoneOutputPath = Join-Path $tempAppDataDirectory 'phone.txt'
+        [System.IO.File]::WriteAllText($phoneSettingsPath, (@{ folder = $parityFolder; count = 2; layout = 'columns'; panes = $phonePanes; names = $phoneNames } | ConvertTo-Json), (New-Object System.Text.UTF8Encoding($true)))
+        Start-Process -FilePath $helperExePath -ArgumentList '--print-board', "`"$phoneSettingsPath`"", "`"$phoneOutputPath`"" -Wait
+        $phoneText = [System.IO.File]::ReadAllText($phoneOutputPath)
+        Assert-Equal ($phoneText.Contains("claude --name 'Bao Ngoc QA' --remote-control 'Bao Ngoc QA'")) $true 'A named Claude pane must also start Remote Control for the phone.'
+        $env:TB_REMOTE = '0'
+        try {
+            Start-Process -FilePath $helperExePath -ArgumentList '--print-board', "`"$phoneSettingsPath`"", "`"$phoneOutputPath`"" -Wait
+            $phoneOffText = [System.IO.File]::ReadAllText($phoneOutputPath)
+        } finally {
+            Remove-Item Env:\TB_REMOTE -ErrorAction SilentlyContinue
+        }
+        Assert-Equal ($phoneOffText.Contains('--remote-control')) $false 'TB_REMOTE=0 must remove the phone flag.'
+        Assert-Equal ($phoneOffText.Contains("claude --name 'Bao Ngoc QA'")) $true 'The pane name must stay when the phone flag is off.'
+
         # Draw the screen in a non-default colour theme, over a picture of the user's own, so both code paths run.
         Add-Type -AssemblyName System.Drawing
         $snapshotDataDirectory = Join-Path $tempAppDataDirectory 'snapshot-data'
@@ -422,6 +442,56 @@ try {
         $defaultSnapshotRun = Start-Process -FilePath $helperExePath -ArgumentList '--desk-snapshot', "`"$defaultSnapshotPath`"", '--data-dir', "`"$tempAppDataDirectory\no-settings-here`"" -Wait -PassThru
         Assert-Equal $defaultSnapshotRun.ExitCode 0 'The settings screen must draw in its default (gold) theme without errors.'
         Assert-Equal ((Test-Path -LiteralPath $defaultSnapshotPath) -and ((Get-Item -LiteralPath $defaultSnapshotPath).Length -gt 20000)) $true 'The default theme must draw a real picture.'
+
+        # The one-file setup: build it into a temp folder (never over dist), then look inside it.
+        $releaseDirectory = Join-Path $tempAppDataDirectory 'release'
+        & $testHost.Source -NoLogo -NoProfile -ExecutionPolicy Bypass -File (Join-Path $projectRoot 'Build-Release.ps1') -Version 9.8.7 -OutputDirectory $releaseDirectory | Out-Null
+        Assert-Equal $LASTEXITCODE 0 'Build-Release.ps1 must build the kit and the setup file.'
+        $setupExePath = Join-Path $releaseDirectory 'TerminalBoardSetup.exe'
+        Assert-Equal (Test-Path -LiteralPath $setupExePath) $true 'Build-Release.ps1 must produce TerminalBoardSetup.exe.'
+        Assert-Equal (Get-Item -LiteralPath $setupExePath).VersionInfo.ProductVersion '9.8.7' 'The setup file must carry the version it was built with.'
+
+        # What is inside the setup must be exactly the kit: same files, same bytes.
+        $setupExtractDirectory = Join-Path $tempAppDataDirectory 'setup-extract'
+        $setupExtractRun = Start-Process -FilePath $setupExePath -ArgumentList '/extract', "`"$setupExtractDirectory`"" -Wait -PassThru
+        Assert-Equal $setupExtractRun.ExitCode 0 'The setup file must unpack its install files.'
+        $kitDirectory = (Resolve-Path -LiteralPath (Join-Path $releaseDirectory 'TerminalBoard')).Path
+        $kitFiles = @(Get-ChildItem -LiteralPath $kitDirectory -Recurse -File)
+        $extractedFiles = @(Get-ChildItem -LiteralPath $setupExtractDirectory -Recurse -File)
+        Assert-Equal $extractedFiles.Count $kitFiles.Count 'The setup file must contain every file of the kit and nothing else.'
+        foreach ($kitFile in $kitFiles) {
+            $relativeKitPath = $kitFile.FullName.Substring($kitDirectory.Length + 1)
+            $extractedPath = Join-Path $setupExtractDirectory $relativeKitPath
+            Assert-Equal (Test-Path -LiteralPath $extractedPath) $true "The setup file must contain $relativeKitPath."
+            Assert-Equal (Get-FileHash -LiteralPath $extractedPath).Hash (Get-FileHash -LiteralPath $kitFile.FullName).Hash "$relativeKitPath inside the setup file must match the kit."
+        }
+
+        # The zip must use forward slashes so every unzip tool puts src/ files in a folder.
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        $zipCheck = [System.IO.Compression.ZipFile]::OpenRead((Join-Path $releaseDirectory 'TerminalBoard.zip'))
+        try {
+            $zipNames = @($zipCheck.Entries | ForEach-Object { $_.FullName })
+        }
+        finally {
+            $zipCheck.Dispose()
+        }
+        Assert-Equal ($zipNames -contains 'src/TerminalBoard.psm1') $true 'The zip must store folders with forward slashes.'
+        Assert-Equal (@($zipNames | Where-Object { $_ -match '\\' }).Count) 0 'The zip must not contain backslashes in entry names.'
+
+        # Every state of the setup window must draw.
+        foreach ($setupState in 'ready', 'installing', 'done', 'needswt', 'failed') {
+            $setupPicturePath = Join-Path $tempAppDataDirectory "setup-$setupState.png"
+            $setupPictureRun = Start-Process -FilePath $setupExePath -ArgumentList '/snapshot', "`"$setupPicturePath`"", $setupState -Wait -PassThru
+            Assert-Equal $setupPictureRun.ExitCode 0 "The setup window must draw its '$setupState' state."
+            Assert-Equal ((Test-Path -LiteralPath $setupPicturePath) -and ((Get-Item -LiteralPath $setupPicturePath).Length -gt 10000)) $true "The '$setupState' state must draw a real picture."
+        }
+
+        # The installed-apps entry and the uninstaller that it runs are part of install.ps1 / uninstall.ps1.
+        $installScriptText = Get-Content -LiteralPath (Join-Path $projectRoot 'install.ps1') -Raw
+        Assert-Equal ($installScriptText -match 'Uninstall\\TerminalBoard') $true 'install.ps1 must register Terminal Board in the installed apps list.'
+        Assert-Equal ($installScriptText -match "'uninstall\.ps1'") $true 'install.ps1 must keep a copy of uninstall.ps1 for the installed apps list.'
+        $uninstallScriptText = Get-Content -LiteralPath (Join-Path $projectRoot 'uninstall.ps1') -Raw
+        Assert-Equal ($uninstallScriptText -match 'Uninstall\\TerminalBoard') $true 'uninstall.ps1 must remove the installed apps entry.'
     }
 }
 finally {

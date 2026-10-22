@@ -908,6 +908,11 @@ function Save-TbDeskSettings {
                     $data[$keepName] = [string]$keepValue
                 }
             }
+            # Agent names per pane (set on the settings screen) are kept too.
+            $keepNames = @(Get-TbJsonValue -Object $existing -Name 'names' | ForEach-Object { [string]$_ })
+            if ($keepNames.Count -gt 0) {
+                $data['names'] = $keepNames
+            }
         }
         catch {
             # A damaged file simply has no theme to keep.
@@ -930,6 +935,24 @@ function Open-TbDesk {
 
     if (-not (Test-Path -LiteralPath $Settings.Folder -PathType Container)) {
         throw "Working folder not found: $($Settings.Folder)"
+    }
+
+    # Named panes (banner + tab title) are built by the screenshot helper program; hand the real launch to it.
+    if (-not $DryRun) {
+        $deskPath = Get-TbDeskSettingsPath
+        $hasNames = $false
+        try {
+            $savedDesk = Get-Content -LiteralPath $deskPath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+            $hasNames = @(Get-TbJsonValue -Object $savedDesk -Name 'names' | Where-Object { $_ }).Count -gt 0
+        }
+        catch {
+            $hasNames = $false
+        }
+        $helper = Get-TbClipHelperPath
+        if ($hasNames -and (Test-Path -LiteralPath $helper)) {
+            Start-Process -FilePath $helper -ArgumentList '--open', '--data-dir', ('"{0}"' -f (Split-Path -Parent $deskPath))
+            return
+        }
     }
 
     $commands = @($Settings.Panes | Select-Object -First $Settings.Count)

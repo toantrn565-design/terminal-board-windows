@@ -433,6 +433,7 @@
         </Grid.ColumnDefinitions>
         <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="{DynamicResource WinMuted}" TextWrapping="Wrap" Margin="0,0,24,0"/>
         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+          <Button x:Name="BtnClosePanes" Style="{StaticResource GhostWin}" Content="Close panes" ToolTip="Close the panes you no longer use in the open board window" Height="50" Padding="24,0" Margin="0,0,12,0"/>
           <Button x:Name="BtnSave" Style="{StaticResource GhostWin}" Content="Save settings" Height="50" Padding="24,0" Margin="0,0,12,0"/>
           <Button x:Name="BtnOpen" Style="{StaticResource PrimaryButton}" Content="Open workspace" Height="50" Padding="34,0" IsDefault="True"/>
         </StackPanel>

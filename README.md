@@ -8,8 +8,9 @@ run `claude`, `codex`, a dev server, a log tail, or any other command.
 
 ## Quick start
 
-1. **Install once**: open the `Terminal Board Setup` folder and double-click
-   `setup.cmd`. After that it just works; there is nothing to repeat.
+1. **Install once**: double-click `TerminalBoardSetup.exe` and click
+   **Install**. After that it just works; there is nothing to repeat. (Windows
+   Terminal must be installed; it is built into Windows 11.)
 2. **Open a workspace**: click the **Terminal Board** icon on the Desktop (or
    double-click the icon by the clock, or use the Start Menu). The settings
    screen appears: pick the working folder, the number of panes (1-12), the
@@ -33,14 +34,39 @@ repackage the kit after a change.
 
 ## Installation
 
+### The setup file (for any PC)
+
+Give people **`TerminalBoardSetup.exe`**. They double-click it, click
+**Install**, and it is ready to use: the Desktop icon, the Start Menu entries,
+the `tb` command and the screenshot helper are all set up. It needs no
+administrator rights and installs only for the current Windows user. Terminal
+Board then appears in Windows' *Installed apps* list, where **Uninstall**
+removes it. To update, run a newer `TerminalBoardSetup.exe` over the old one;
+settings are kept.
+
+Requirements: Windows 10 or 11 and Windows Terminal (built into Windows 11; free
+from the Microsoft Store on Windows 10 - the setup offers the link if it is
+missing).
+
+Good to know:
+
+- The file is not code-signed, so Windows SmartScreen may say "Windows protected
+  your PC" on another PC. Click **More info**, then **Run anyway**. Removing that
+  notice needs a paid code-signing certificate.
+- `TerminalBoardSetup.exe /S` installs silently (no window) for IT rollouts; the
+  exit code is 0 when it worked and 3 when Windows Terminal is missing.
+- `TerminalBoardSetup.exe /extract <folder>` only unpacks the install files.
+- Every run writes its log to `%TEMP%\TerminalBoardSetup.log`.
+
+### From the project folder
+
 Open PowerShell in the project folder and run:
 
 ```powershell
 .\install.ps1
 ```
 
-Or, on another Windows PC, unzip the release package and double-click
-`setup.cmd`.
+Or unzip `TerminalBoard.zip` on another PC and double-click `setup.cmd`.
 
 Open a new terminal afterwards so PATH is refreshed.
 
@@ -48,18 +74,21 @@ The installer puts the program and a `tb.cmd` shim in the user's WindowsApps
 folder, so the command works immediately, survives a restart, and needs no
 manual PATH edits.
 
-### Building the release package
+### Building the setup file
 
-To create a standalone kit (no git needed, just unzip or copy it and
-double-click `setup.cmd`), run this in the project folder:
+To create the setup file, the zip and the kit folder, run this in the project
+folder:
 
 ```powershell
 .\Build-Release.ps1
+.\Build-Release.ps1 -Version 1.1.0   # to stamp another version number
 ```
 
-The result is `dist\TerminalBoard` (a folder you can copy straight to the
-Desktop or a USB stick) and `dist\TerminalBoard.zip` (for sharing). Run it again
-whenever the code changes so the kit is always current.
+The result is in `dist`: `TerminalBoardSetup.exe` (one file to share, about 170
+KB), `TerminalBoard.zip` and the `TerminalBoard` folder (the same files, for
+people who prefer them). Run it again whenever the code changes so they are
+always current. Nothing to install is needed: the setup is compiled with the
+`csc.exe` that ships with Windows, and it contains the whole kit inside it.
 
 ## The settings screen (choose panes and agents)
 
@@ -73,8 +102,18 @@ this screen:
 - **What runs in each pane?**: for each pane choose *Terminal (PowerShell)*,
   *Claude Code*, *Codex*, *Antigravity*, or *Custom* to type any command. Use
   "Quick presets" to set a whole arrangement at once, then adjust single panes.
+- **Name** (above each pane's choices): who works in that pane, for example
+  "Phuong Thao - Whiteboard". The name appears in the tab title and as a yellow
+  banner at the top of the pane; Claude Code also receives it as `--name`.
 - **Open workspace**: opens a new maximized window (the taskbar stays visible)
   and remembers your choices. **Save settings** only saves, without opening.
+- **Close panes**: tick the panes you no longer use and close them in the
+  Windows Terminal window you used last. Set "Panes open now" to the number of
+  panes you see, so the numbers match. Closing a pane ends its session.
+
+Screenshots: the clipboard keeps the plain picture, so Ctrl+V in a browser, chat
+or Word pastes the picture. Only when the window in front is a terminal does the
+helper add the file path just before the paste, so the terminal receives the path.
 
 The screen has 4 luxurious colour themes; switch between them with the 4 dots in
 the top-right corner (the choice is remembered): **Imperial Gold** (royal gold,

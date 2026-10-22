@@ -1,5 +1,8 @@
 [CmdletBinding()]
-param()
+param(
+    # Shown in Windows' "Installed apps" list. The one-file setup passes its own version.
+    [string]$Version
+)
 
 $ErrorActionPreference = 'Stop'
 $platform = [System.Environment]::OSVersion.Platform
@@ -21,6 +24,8 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'tb.ps1') -Destination $installD
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'tb.cmd') -Destination $installDirectory -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'src\TerminalBoard.psm1') -Destination $moduleDirectory -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'src\Save-TbClipboardImageWorker.ps1') -Destination $moduleDirectory -Force
+# Windows' "Installed apps" list runs this copy when the user chooses Uninstall.
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'uninstall.ps1') -Destination $installDirectory -Force
 # The hotkey script was replaced by the clipboard helper, and the settings screen now lives
 # inside the helper exe; drop the copies an older install left behind.
 Remove-Item -LiteralPath (Join-Path $moduleDirectory 'Invoke-TbImageHotkey.ps1') -Force -ErrorAction SilentlyContinue
@@ -157,6 +162,29 @@ try {
 }
 catch {
     Write-Warning "Could not create the Start Menu shortcuts: $($_.Exception.Message)"
+}
+
+# Register with Windows so Terminal Board shows up in "Installed apps" and can be removed from there.
+try {
+    $uninstallKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\TerminalBoard'
+    New-Item -Path $uninstallKey -Force | Out-Null
+    $uninstallScript = Join-Path $installDirectory 'uninstall.ps1'
+    $uninstallEntries = [ordered]@{
+        DisplayName     = 'Terminal Board'
+        InstallLocation = $installDirectory
+        UninstallString = "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$uninstallScript`" -Pause"
+        NoModify        = 1
+        NoRepair        = 1
+    }
+    if ($iconPath) { $uninstallEntries['DisplayIcon'] = $iconPath }
+    if ($Version) { $uninstallEntries['DisplayVersion'] = $Version }
+    foreach ($entryName in $uninstallEntries.Keys) {
+        $entryType = if ($uninstallEntries[$entryName] -is [int]) { 'DWord' } else { 'String' }
+        New-ItemProperty -Path $uninstallKey -Name $entryName -Value $uninstallEntries[$entryName] -PropertyType $entryType -Force | Out-Null
+    }
+}
+catch {
+    Write-Warning "Could not add Terminal Board to the installed apps list: $($_.Exception.Message)"
 }
 
 Write-Host "Installed Terminal Board to: $installDirectory"
